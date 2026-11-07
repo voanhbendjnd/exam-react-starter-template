@@ -81,10 +81,17 @@ export const CONFIG = {
 
 ---
 
-## 🎁 TOÀN BỘ TÍNH NĂNG TỰ ĐỘNG CHẠY NGAY LẬP TỨC:
+## 🎁 TOÀN BỘ TÍNH NĂNG ĐÃ ĐƯỢC TÍCH HỢP ĐẦY ĐỦ:
 1. **Lọc dữ liệu (Filter)**: Ô tìm kiếm theo tên + dropdown danh mục + nút `Filter` (tự động thử API search hoặc fallback lọc client-side mượt mà).
-2. **Phân trang (Pagination)**: Dòng đếm `Show x of y records` và thanh chuyển trang `Previous 1, 2, 3 ... Next`.
-3. **Xem chi tiết (View Details)**: Màn hình chi tiết đẹp mắt với nút `Quay Lai` trở về danh sách.
-4. **Thêm mới (Add New) có Full Validation**: Bắt buộc nhập, độ dài tối đa, kiểm tra trùng tên (**No duplicate**), khoảng giá, và kiểm tra định dạng ngày **dd/MM/yyyy**.
-5. **Xác nhận xóa (Confirmation Dialog)**: Popup xác nhận xóa chuẩn theo layout `Yes / Close`, sau khi xóa hiện thông báo `"Deleted successfully"` và tự nạp lại danh sách.
-6. **Thông báo chuẩn đề**: Khi bảng trống hiện `"No records found"`, khi thêm mới thành công hiện `"Created new ... successfully"`.
+2. **Nút Reset bộ lọc**: Nút `Reset` cạnh Filter xóa trắng toàn bộ điều kiện và đưa danh sách về ban đầu.
+3. **Sắp xếp dữ liệu (Sort)**: Hỗ trợ Sort theo Giá tăng/giảm, Tên từ A-Z.
+4. **Phân trang (Pagination)**: Dòng đếm `Show x of y records` và thanh chuyển trang `Previous 1, 2, 3 ... Next`.
+5. **Xem chi tiết (View Details)**: Màn hình chi tiết đẹp mắt với nút `Quay Lai` trở về danh sách.
+6. **Thêm mới (Add New) có Full Validation**: Bắt buộc nhập, độ dài tối đa, kiểm tra trùng tên (**No duplicate**), khoảng giá, và kiểm tra định dạng ngày **dd/MM/yyyy**.
+7. **Cập nhật / Chỉnh sửa (Update / Edit)**:
+   - Màn hình [src/pages/EditPage.jsx](file:///src/pages/EditPage.jsx) tự động nạp dữ liệu cũ theo ID đổ vào form.
+   - Nút `Edit` trong cột `Action` của bảng danh sách (`Delete | View | Edit`).
+   - Gọi API `PUT` lưu dữ liệu và quay về danh sách hiển thị thông báo.
+8. **Xác nhận xóa (Confirmation Dialog)**: Popup xác nhận xóa chuẩn theo layout `Yes / Close`, sau khi xóa hiện thông báo `"Deleted successfully"` và tự nạp lại danh sách.
+9. **Chọn nhiều ô (Multi-select) & Xóa hàng loạt (Bulk Delete)**: Checkbox từng dòng + Checkbox chọn tất cả + Nút xóa các mục đã chọn.
+10. **Thông báo chuẩn đề**: Khi bảng trống hiện `"No records found"`, khi thêm mới/sửa/xóa đều có Alert thông báo tự tắt.

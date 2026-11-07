@@ -3,17 +3,21 @@
  * Tuân thủ quy tắc 3.3 phòng thi EOS: React-Router-DOM
  * ------------------------------------------------------------------
  * Cấu trúc GENERIC dùng chung cho MỌI ĐỀ THI:
- *  1. Dạng Multi-page Routing (List -> Detail -> Add)
- *  2. Dạng Single-page Modal CRUD (/single-crud)
+ *  - / : Trang danh sách
+ *  - /add : Trang thêm mới
+ *  - /view/:id : Trang xem chi tiết
+ *  - /edit/:id : Trang chỉnh sửa (Update)
+ *  - /single-crud : Màn hình dự phòng nếu đề thi yêu cầu Single-page Modal CRUD
  */
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Các màn hình dạng Multi-page Generic
+// Các màn hình chính
 import ListPage from './pages/ListPage.jsx';
 import DetailPage from './pages/DetailPage.jsx';
 import AddPage from './pages/AddPage.jsx';
+import EditPage from './pages/EditPage.jsx';
 
 // Màn hình dự phòng dạng Single Page Modal CRUD
 import MasterCrudPage from './MasterCrudPage.jsx';
@@ -26,14 +30,17 @@ export default function App() {
         {/* ========================================================= */}
         {/* DẠNG 1: ĐỀ THI MULTI-PAGE (DÙNG CHUNG CHO MỌI THỰC THỂ)   */}
         {/* ========================================================= */}
-        {/* Trang danh sách chính */}
+        {/* 1. Trang danh sách chính */}
         <Route path="/" element={<ListPage />} />
 
-        {/* Trang thêm mới */}
+        {/* 2. Trang thêm mới */}
         <Route path="/add" element={<AddPage />} />
 
-        {/* Trang xem chi tiết */}
+        {/* 3. Trang xem chi tiết */}
         <Route path="/view/:id" element={<DetailPage />} />
+
+        {/* 4. Trang chỉnh sửa / cập nhật (Update) */}
+        <Route path="/edit/:id" element={<EditPage />} />
 
         {/* ========================================================= */}
         {/* DẠNG 2: ĐỀ THI SINGLE-PAGE TABLE MODAL CRUD             */}

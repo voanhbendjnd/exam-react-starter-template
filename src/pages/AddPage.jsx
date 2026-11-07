@@ -6,17 +6,20 @@ import { CONFIG } from '../config';
 import Header from '../components/Header';
 
 /**
- * GENERIC ADD PAGE
- * Màn hình thêm mới bản ghi kèm hệ thống Validation linh hoạt
+ * ====================================================================================
+ * 📄 MÀN HÌNH THÊM MỚI (ADD PAGE)
+ * ====================================================================================
  */
 export default function AddPage() {
   const navigate = useNavigate();
 
-  // State danh mục và danh sách hiện có (để check trùng tên nếu cần)
   const [categories, setCategories] = useState([]);
   const [existingItems, setExistingItems] = useState([]);
 
-  // State Form
+  // ----------------------------------------------------------------------------------
+  // 🔹 [ĐIỂM DỄ THAY ĐỔI 1]: STATE DỮ LIỆU CỦA FORM (FORM DATA)
+  // Nếu đề thi yêu cầu thêm trường mới (VD: quantity, status, desc...), thêm vào đây:
+  // ----------------------------------------------------------------------------------
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -24,13 +27,14 @@ export default function AddPage() {
     productionDate: '',
     importDate: '',
     category: '',
+    // quantity: '', // 💡 Ví dụ thêm số lượng
   });
 
-  // State thông báo lỗi validation chi tiết
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [alertError, setAlertError] = useState('');
 
+  // Nạp dữ liệu danh mục & danh sách hiện có (để check trùng lặp)
   useEffect(() => {
     const fetchInitData = async () => {
       try {
@@ -39,14 +43,15 @@ export default function AddPage() {
           api.get(CONFIG.API.ENDPOINT_MAIN).catch(() => []),
         ]);
 
-        const catList = Array.isArray(catRes) ? catRes : catRes?.data || [];
+        // 🔥 Bóc tách an toàn cho cả dạng Spring Data JPA Page { content: [] }
+        const catList = Array.isArray(catRes) ? catRes : (catRes?.content || catRes?.data || []);
         setCategories(catList);
         if (catList.length > 0) {
           const firstCat = catList[0]?.categoryName || catList[0]?.name || catList[0]?.id || '';
           setFormData((prev) => ({ ...prev, category: prev.category || firstCat }));
         }
 
-        const itemList = Array.isArray(listRes) ? listRes : listRes?.data || [];
+        const itemList = Array.isArray(listRes) ? listRes : (listRes?.content || listRes?.data || []);
         setExistingItems(itemList);
       } catch (err) {
         console.warn('Lỗi nạp dữ liệu ban đầu:', err.message);
@@ -56,7 +61,7 @@ export default function AddPage() {
     fetchInitData();
   }, []);
 
-  // Kiểm tra định dạng ngày dd/MM/yyyy
+  // Helper kiểm tra ngày đúng định dạng dd/MM/yyyy
   const isValidDateFormat = (dateStr) => {
     if (!dateStr) return false;
     if (!CONFIG.VALIDATION.DATE_FORMAT_REGEX.test(dateStr)) return false;
@@ -74,11 +79,13 @@ export default function AddPage() {
     );
   };
 
-  // Validate form
+  // ----------------------------------------------------------------------------------
+  // 🔹 [ĐIỂM DỄ THAY ĐỔI 2]: HÀM VALIDATE DỮ LIỆU THEO BẢNG SCREEN DEFINITION CỦA ĐỀ
+  // ----------------------------------------------------------------------------------
   const validateForm = () => {
     const newErrors = {};
 
-    // 1. Tên thực thể: Bắt buộc, độ dài tối đa, kiểm tra trùng lặp
+    // 1. Tên: Bắt buộc, độ dài, cấm trùng lặp (No duplicate)
     const trimmedName = formData.name.trim();
     if (!trimmedName) {
       newErrors.name = `${CONFIG.LABELS.COL_NAME} is mandatory and cannot be empty.`;
@@ -86,7 +93,7 @@ export default function AddPage() {
       newErrors.name = `${CONFIG.LABELS.COL_NAME} must not exceed ${CONFIG.VALIDATION.NAME_MAX_LENGTH} characters.`;
     } else if (CONFIG.VALIDATION.NAME_NO_DUPLICATE) {
       const isDuplicate = existingItems.some((item) => {
-        const existingName = (item[CONFIG.FIELDS.NAME] || item.name || '').trim();
+        const existingName = (item[CONFIG.FIELDS.NAME] || item.name || item.shoesName || '').trim();
         return existingName.toLowerCase() === trimmedName.toLowerCase();
       });
       if (isDuplicate) {
@@ -94,7 +101,7 @@ export default function AddPage() {
       }
     }
 
-    // 2. Đơn giá: Bắt buộc, số trong khoảng cho phép
+    // 2. Giá: Bắt buộc, số dương, khoảng giá
     const priceStr = String(formData.price).trim();
     if (CONFIG.VALIDATION.PRICE_REQUIRED && !priceStr) {
       newErrors.price = `${CONFIG.LABELS.COL_PRICE} is mandatory.`;
@@ -112,7 +119,7 @@ export default function AddPage() {
       }
     }
 
-    // 3. Nhà sản xuất / tác giả: Bắt buộc, độ dài tối đa
+    // 3. Nhà sản xuất / tác giả
     const trimmedManufacturer = formData.manufacturer.trim();
     if (!trimmedManufacturer) {
       newErrors.manufacturer = `${CONFIG.LABELS.COL_MANUFACTURER} is mandatory.`;
@@ -120,7 +127,7 @@ export default function AddPage() {
       newErrors.manufacturer = `${CONFIG.LABELS.COL_MANUFACTURER} must not exceed ${CONFIG.VALIDATION.MANUFACTURER_MAX_LENGTH} characters.`;
     }
 
-    // 4. Ngày sản xuất / ngày 1: Bắt buộc, định dạng dd/MM/yyyy
+    // 4. Ngày sản xuất: Bắt buộc, format dd/MM/yyyy
     const prodDateStr = formData.productionDate.trim();
     if (!prodDateStr) {
       newErrors.productionDate = `${CONFIG.LABELS.COL_PROD_DATE} is mandatory.`;
@@ -128,7 +135,7 @@ export default function AddPage() {
       newErrors.productionDate = `${CONFIG.LABELS.COL_PROD_DATE} must follow format dd/MM/yyyy (e.g. 20/01/2025).`;
     }
 
-    // 5. Ngày nhập / ngày 2: Không bắt buộc, nếu nhập phải đúng format
+    // 5. Ngày nhập: Không bắt buộc (Optional), nếu nhập phải đúng format dd/MM/yyyy
     const importDateStr = formData.importDate.trim();
     if (importDateStr) {
       if (importDateStr.length !== 10 || !isValidDateFormat(importDateStr)) {
@@ -141,6 +148,11 @@ export default function AddPage() {
       newErrors.category = `${CONFIG.LABELS.COL_CATEGORY} is mandatory. Please select one.`;
     }
 
+    // 💡 VÍ DỤ NẾU ĐỀ BẮT BUỘC NHẬP QUANTITY > 0:
+    // if (!formData.quantity || Number(formData.quantity) <= 0) {
+    //   newErrors.quantity = 'Quantity must be greater than 0.';
+    // }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -152,7 +164,20 @@ export default function AddPage() {
     }
   };
 
-  // Submit tạo mới
+  // Helper chuyển đổi dd/MM/yyyy -> yyyy-MM-dd cho Spring Boot Date deserializer
+  const convertDateToBackend = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const parts = dateStr.trim().split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    return dateStr;
+  };
+
+  // ----------------------------------------------------------------------------------
+  // 🔹 [ĐIỂM DỄ THAY ĐỔI 3]: ĐÓNG GÓI PAYLOAD GỬI LÊN BACKEND KHI BẤM NÚT SAVE
+  // ----------------------------------------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAlertError('');
@@ -165,18 +190,19 @@ export default function AddPage() {
 
     setSubmitting(true);
     try {
+      // ⚠️ Tự động convert ngày dd/MM/yyyy sang yyyy-MM-dd để Spring Boot nhận được
       const payload = {
         [CONFIG.FIELDS.NAME]: formData.name.trim(),
         [CONFIG.FIELDS.PRICE]: Number(formData.price),
         [CONFIG.FIELDS.MANUFACTURER]: formData.manufacturer.trim(),
-        [CONFIG.FIELDS.PROD_DATE]: formData.productionDate.trim(),
-        [CONFIG.FIELDS.IMPORT_DATE]: formData.importDate.trim() || null,
+        [CONFIG.FIELDS.PROD_DATE]: convertDateToBackend(formData.productionDate),
+        [CONFIG.FIELDS.IMPORT_DATE]: convertDateToBackend(formData.importDate),
         [CONFIG.FIELDS.CATEGORY]: formData.category,
       };
 
       await api.post(CONFIG.API.ENDPOINT_MAIN, payload);
 
-      // Lưu flash message vào sessionStorage để hiển thị khi chuyển về danh sách
+      // Lưu flash message vào sessionStorage để trang danh sách hiển thị
       sessionStorage.setItem('flashMessage', CONFIG.MESSAGES.CREATE_SUCCESS);
       navigate('/');
     } catch (err) {
@@ -188,10 +214,10 @@ export default function AddPage() {
 
   return (
     <Container className="py-3" style={{ maxWidth: '800px' }}>
-      {/* HEADER: Logo + Date: dd/MM/yyyy */}
+      {/* 1. Header: [ Logo ... Date: dd/MM/yyyy ] */}
       <Header />
 
-      {/* TIÊU ĐỀ TRANG THÊM MỚI */}
+      {/* 2. Tiêu đề màn hình */}
       <h4 className="fw-bold mb-3">{CONFIG.LABELS.PAGE_ADD_TITLE}</h4>
 
       {alertError && (
@@ -200,9 +226,13 @@ export default function AddPage() {
         </Alert>
       )}
 
+      {/* ---------------------------------------------------------------------------- */}
+      {/* 🔹 [ĐIỂM DỄ THAY ĐỔI 4]: FORM CÁC Ô NHẬP LIỆU                                */}
+      {/* Muốn thêm ô nhập liệu mới thì chỉ cần copy 1 khối <Form.Group as={Row}> dưới: */}
+      {/* ---------------------------------------------------------------------------- */}
       <Card className="border border-secondary p-4 bg-white shadow-sm">
         <Form onSubmit={handleSubmit} noValidate>
-          {/* 1. TÊN THỰC THỂ */}
+          {/* Ô 1: TÊN ĐỐI TƯỢNG */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.LABELS.COL_NAME}: <span className="text-danger">*</span>
@@ -220,7 +250,7 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* 2. ĐƠN GIÁ */}
+          {/* Ô 2: GIÁ */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.LABELS.COL_PRICE}: <span className="text-danger">*</span>
@@ -240,7 +270,7 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* 3. NHÀ SẢN XUẤT / TÁC GIẢ */}
+          {/* Ô 3: NHÀ SẢN XUẤT / HÃNG */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.LABELS.COL_MANUFACTURER}: <span className="text-danger">*</span>
@@ -258,7 +288,7 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* 4 & 5. NGÀY 1 & NGÀY 2 */}
+          {/* Ô 4 & 5: NGÀY SẢN XUẤT & NGÀY NHẬP */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.LABELS.COL_PROD_DATE}: <span className="text-danger">*</span>
@@ -291,7 +321,7 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* 6. CATEGORY */}
+          {/* Ô 6: DANH MỤC PHỤ */}
           <Form.Group as={Row} className="mb-4">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.LABELS.COL_CATEGORY}: <span className="text-danger">*</span>
@@ -317,7 +347,25 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* NÚT THAO TÁC: [ Save ] [ Back ] */}
+          {/* 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM Ô "SỐ LƯỢNG (QUANTITY)", COPY ĐOẠN NÀY:
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Quantity: <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={4}>
+              <Form.Control
+                type="number"
+                placeholder="e.g. 50"
+                value={formData.quantity}
+                isInvalid={!!errors.quantity}
+                onChange={(e) => handleChange('quantity', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.quantity}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+          */}
+
+          {/* CẶP NÚT: [ SAVE ] [ BACK ] */}
           <Row>
             <Col sm={{ span: 8, offset: 3 }} className="d-flex gap-3">
               <Button
@@ -345,4 +393,3 @@ export default function AddPage() {
     </Container>
   );
 }
-
