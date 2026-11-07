@@ -17,7 +17,17 @@ export default function DetailPage() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const formatDate = (val) => {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val); // Nếu không phải ngày hợp lệ thì giữ nguyên chuỗi cũ
 
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  };
   // Helper chuyển đổi ngày từ Backend ISO Date (2026-11-07T...) sang dd/MM/yyyy
   const formatDisplayDate = (val) => {
     if (!val) return '—';
@@ -66,8 +76,10 @@ export default function DetailPage() {
       ? item?.[CONFIG.FIELDS.CATEGORY]?.name || item?.[CONFIG.FIELDS.CATEGORY]?.categoryName
       : item?.[CONFIG.FIELDS.CATEGORY] || item?.categoryName || '—';
   const price = item?.[CONFIG.FIELDS.PRICE] ?? item?.price;
-  const prodDate = formatDisplayDate(item?.[CONFIG.FIELDS.PROD_DATE] || item?.productionDate);
-  const importDate = formatDisplayDate(item?.[CONFIG.FIELDS.IMPORT_DATE] || item?.importDate);
+  const prodDate = formatDate(item?.[CONFIG.FIELDS.PROD_DATE]);
+  const importDate = formatDate(item?.[CONFIG.FIELDS.IMPORT_DATE]);
+  // const prodDate = formatDisplayDate(item?.[CONFIG.FIELDS.PROD_DATE] || item?.productionDate);
+  // const importDate = formatDisplayDate(item?.[CONFIG.FIELDS.IMPORT_DATE] || item?.importDate);
 
   // 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM TRƯỜNG "QUANTITY", "STATUS", "DESCRIPTION":
   // const quantity = item?.[CONFIG.FIELDS.QUANTITY] ?? item?.quantity ?? '—';
