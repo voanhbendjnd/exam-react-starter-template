@@ -1,10 +1,21 @@
 /**
- * App Component - Điều hướng bằng React-Router-DOM
- * Tuân thủ quy định 3.3: Sử dụng React-Router-DOM cho ứng dụng
+ * App Component - Điều hướng các màn hình bằng React-Router-DOM
+ * Tuân thủ quy tắc 3.3 phòng thi EOS: React-Router-DOM
+ * ------------------------------------------------------------------
+ * Cấu trúc GENERIC dùng chung cho MỌI ĐỀ THI:
+ *  1. Dạng Multi-page Routing (List -> Detail -> Add)
+ *  2. Dạng Single-page Modal CRUD (/single-crud)
  */
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Các màn hình dạng Multi-page Generic
+import ListPage from './pages/ListPage.jsx';
+import DetailPage from './pages/DetailPage.jsx';
+import AddPage from './pages/AddPage.jsx';
+
+// Màn hình dự phòng dạng Single Page Modal CRUD
 import MasterCrudPage from './MasterCrudPage.jsx';
 import SimpleLogin from './SimpleLogin.jsx';
 
@@ -12,13 +23,25 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Đường dẫn mặc định: Mở thẳng trang Master CRUD */}
-        <Route path="/" element={<MasterCrudPage />} />
+        {/* ========================================================= */}
+        {/* DẠNG 1: ĐỀ THI MULTI-PAGE (DÙNG CHUNG CHO MỌI THỰC THỂ)   */}
+        {/* ========================================================= */}
+        {/* Trang danh sách chính */}
+        <Route path="/" element={<ListPage />} />
 
-        {/* Đường dẫn đăng nhập nếu đề bài yêu cầu */}
+        {/* Trang thêm mới */}
+        <Route path="/add" element={<AddPage />} />
+
+        {/* Trang xem chi tiết */}
+        <Route path="/view/:id" element={<DetailPage />} />
+
+        {/* ========================================================= */}
+        {/* DẠNG 2: ĐỀ THI SINGLE-PAGE TABLE MODAL CRUD             */}
+        {/* ========================================================= */}
+        <Route path="/single-crud" element={<MasterCrudPage />} />
         <Route path="/login" element={<SimpleLogin />} />
 
-        {/* Mọi đường dẫn khác đều chuyển hướng về trang chủ */}
+        {/* Fallback điều hướng về trang chủ */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
