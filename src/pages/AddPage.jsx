@@ -8,6 +8,8 @@ import Header from '../components/Header';
 /**
  * ====================================================================================
  * 📄 MÀN HÌNH THÊM MỚI (ADD PAGE)
+ * ------------------------------------------------------------------------------------
+ * Tự động thích ứng với bất kỳ đối tượng nào (Shoes, Employee, Book, Room...)
  * ====================================================================================
  */
 export default function AddPage() {
@@ -16,39 +18,39 @@ export default function AddPage() {
   const [categories, setCategories] = useState([]);
   const [existingItems, setExistingItems] = useState([]);
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 [ĐIỂM DỄ THAY ĐỔI 1]: STATE DỮ LIỆU CỦA FORM (FORM DATA)
-  // Nếu đề thi yêu cầu thêm trường mới (VD: quantity, status, desc...), thêm vào đây:
-  // ----------------------------------------------------------------------------------
+  // State Form nhập liệu
   const [formData, setFormData] = useState({
     name: '',
     price: '',
-    manufacturer: '',
-    productionDate: '',
-    importDate: '',
+    extra: '',
+    date1: '',
+    date2: '',
     category: '',
-    // quantity: '', // 💡 Ví dụ thêm số lượng
   });
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [alertError, setAlertError] = useState('');
 
-  // Nạp dữ liệu danh mục & danh sách hiện có (để check trùng lặp)
+  // Nạp danh mục & danh sách hiện có (để check trùng tên nếu có)
   useEffect(() => {
     const fetchInitData = async () => {
       try {
         const [catRes, listRes] = await Promise.all([
-          api.get(CONFIG.API.ENDPOINT_CATEGORY).catch(() => []),
-          api.get(CONFIG.API.ENDPOINT_MAIN).catch(() => []),
+          api.get(CONFIG.API_CATEGORY).catch(() => []),
+          api.get(CONFIG.API_MAIN).catch(() => []),
         ]);
 
-        // 🔥 Bóc tách an toàn cho cả dạng Spring Data JPA Page { content: [] }
         const catList = Array.isArray(catRes) ? catRes : (catRes?.content || catRes?.data || []);
         setCategories(catList);
         if (catList.length > 0) {
-          const firstCat = catList[0]?.categoryName || catList[0]?.name || catList[0]?.id || '';
-          setFormData((prev) => ({ ...prev, category: prev.category || firstCat }));
+          const firstCatVal =
+            catList[0]?.departmentId ||
+            catList[0]?.categoryId ||
+            catList[0]?.categoryName ||
+            catList[0]?.id ||
+            '';
+          setFormData((prev) => ({ ...prev, category: prev.category || firstCatVal }));
         }
 
         const itemList = Array.isArray(listRes) ? listRes : (listRes?.content || listRes?.data || []);
@@ -61,10 +63,11 @@ export default function AddPage() {
     fetchInitData();
   }, []);
 
-  // Helper kiểm tra ngày đúng định dạng dd/MM/yyyy
+  // Helper kiểm tra định dạng ngày dd/MM/yyyy
   const isValidDateFormat = (dateStr) => {
     if (!dateStr) return false;
-    if (!CONFIG.VALIDATION.DATE_FORMAT_REGEX.test(dateStr)) return false;
+    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+    if (!regex.test(dateStr)) return false;
 
     const parts = dateStr.split('/');
     const day = parseInt(parts[0], 10);
@@ -79,79 +82,76 @@ export default function AddPage() {
     );
   };
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 [ĐIỂM DỄ THAY ĐỔI 2]: HÀM VALIDATE DỮ LIỆU THEO BẢNG SCREEN DEFINITION CỦA ĐỀ
-  // ----------------------------------------------------------------------------------
+  // Helper chuyển đổi dd/MM/yyyy -> yyyy-MM-dd cho Spring Boot
+  const convertDateToBackend = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const parts = dateStr.trim().split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    return dateStr;
+  };
+
+  // Validate form
   const validateForm = () => {
     const newErrors = {};
 
-    // 1. Tên: Bắt buộc, độ dài, cấm trùng lặp (No duplicate)
+    // 1. Tên
     const trimmedName = formData.name.trim();
     if (!trimmedName) {
-      newErrors.name = `${CONFIG.LABELS.COL_NAME} is mandatory and cannot be empty.`;
-    } else if (trimmedName.length > CONFIG.VALIDATION.NAME_MAX_LENGTH) {
-      newErrors.name = `${CONFIG.LABELS.COL_NAME} must not exceed ${CONFIG.VALIDATION.NAME_MAX_LENGTH} characters.`;
-    } else if (CONFIG.VALIDATION.NAME_NO_DUPLICATE) {
+      newErrors.name = `${CONFIG.ENTITY_NAME} Name is mandatory.`;
+    } else {
+      // Check trùng tên
       const isDuplicate = existingItems.some((item) => {
-        const existingName = (item[CONFIG.FIELDS.NAME] || item.name || item.shoesName || '').trim();
+        const existingName = (
+          item[CONFIG.FIELD_NAME] ||
+          item.name ||
+          item.fullName ||
+          item.shoesName ||
+          ''
+        ).trim();
         return existingName.toLowerCase() === trimmedName.toLowerCase();
       });
       if (isDuplicate) {
-        newErrors.name = `${CONFIG.LABELS.COL_NAME} already exists. Duplicate name is not allowed.`;
+        newErrors.name = `${CONFIG.ENTITY_NAME} Name already exists. Duplicate is not allowed.`;
       }
     }
 
-    // 2. Giá: Bắt buộc, số dương, khoảng giá
+    // 2. Giá tiền / Lương
     const priceStr = String(formData.price).trim();
-    if (CONFIG.VALIDATION.PRICE_REQUIRED && !priceStr) {
-      newErrors.price = `${CONFIG.LABELS.COL_PRICE} is mandatory.`;
-    } else if (priceStr) {
+    if (!priceStr) {
+      newErrors.price = `${CONFIG.LABEL_PRICE || 'Price'} is mandatory.`;
+    } else {
       const numPrice = Number(priceStr);
-      if (isNaN(numPrice)) {
-        newErrors.price = 'Price must be a valid number.';
-      } else if (
-        numPrice <= CONFIG.VALIDATION.PRICE_MIN ||
-        numPrice >= CONFIG.VALIDATION.PRICE_MAX
-      ) {
-        newErrors.price = `Price must be greater than ${CONFIG.VALIDATION.PRICE_MIN} and less than ${CONFIG.VALIDATION.PRICE_MAX}.`;
-      } else if (priceStr.length > CONFIG.VALIDATION.PRICE_MAX_LENGTH) {
-        newErrors.price = `Price length cannot exceed ${CONFIG.VALIDATION.PRICE_MAX_LENGTH} digits.`;
+      if (isNaN(numPrice) || numPrice <= 0) {
+        newErrors.price = `${CONFIG.LABEL_PRICE || 'Price'} must be greater than 0.`;
       }
     }
 
-    // 3. Nhà sản xuất / tác giả
-    const trimmedManufacturer = formData.manufacturer.trim();
-    if (!trimmedManufacturer) {
-      newErrors.manufacturer = `${CONFIG.LABELS.COL_MANUFACTURER} is mandatory.`;
-    } else if (trimmedManufacturer.length > CONFIG.VALIDATION.MANUFACTURER_MAX_LENGTH) {
-      newErrors.manufacturer = `${CONFIG.LABELS.COL_MANUFACTURER} must not exceed ${CONFIG.VALIDATION.MANUFACTURER_MAX_LENGTH} characters.`;
+    // 3. Thuộc tính phụ (Manufacturer / Position...)
+    if (!formData.extra.trim()) {
+      newErrors.extra = `${CONFIG.LABEL_EXTRA || 'Field'} is mandatory.`;
     }
 
-    // 4. Ngày sản xuất: Bắt buộc, format dd/MM/yyyy
-    const prodDateStr = formData.productionDate.trim();
-    if (!prodDateStr) {
-      newErrors.productionDate = `${CONFIG.LABELS.COL_PROD_DATE} is mandatory.`;
-    } else if (prodDateStr.length !== 10 || !isValidDateFormat(prodDateStr)) {
-      newErrors.productionDate = `${CONFIG.LABELS.COL_PROD_DATE} must follow format dd/MM/yyyy (e.g. 20/01/2025).`;
+    // 4. Ngày 1 (Bắt buộc, format dd/MM/yyyy)
+    const d1Str = formData.date1.trim();
+    if (!d1Str) {
+      newErrors.date1 = `${CONFIG.LABEL_DATE1 || 'Date'} is mandatory.`;
+    } else if (d1Str.length !== 10 || !isValidDateFormat(d1Str)) {
+      newErrors.date1 = `Must follow format dd/MM/yyyy (e.g. 20/01/2025).`;
     }
 
-    // 5. Ngày nhập: Không bắt buộc (Optional), nếu nhập phải đúng format dd/MM/yyyy
-    const importDateStr = formData.importDate.trim();
-    if (importDateStr) {
-      if (importDateStr.length !== 10 || !isValidDateFormat(importDateStr)) {
-        newErrors.importDate = `${CONFIG.LABELS.COL_IMPORT_DATE} must follow format dd/MM/yyyy (e.g. 25/01/2025).`;
-      }
+    // 5. Ngày 2 (Nếu nhập phải đúng format dd/MM/yyyy)
+    const d2Str = formData.date2.trim();
+    if (d2Str && (d2Str.length !== 10 || !isValidDateFormat(d2Str))) {
+      newErrors.date2 = `Must follow format dd/MM/yyyy (e.g. 25/01/2025).`;
     }
 
-    // 6. Danh mục: Bắt buộc
+    // 6. Danh mục
     if (!formData.category) {
-      newErrors.category = `${CONFIG.LABELS.COL_CATEGORY} is mandatory. Please select one.`;
+      newErrors.category = `Category is mandatory. Please select one.`;
     }
-
-    // 💡 VÍ DỤ NẾU ĐỀ BẮT BUỘC NHẬP QUANTITY > 0:
-    // if (!formData.quantity || Number(formData.quantity) <= 0) {
-    //   newErrors.quantity = 'Quantity must be greater than 0.';
-    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,20 +164,7 @@ export default function AddPage() {
     }
   };
 
-  // Helper chuyển đổi dd/MM/yyyy -> yyyy-MM-dd cho Spring Boot Date deserializer
-  const convertDateToBackend = (dateStr) => {
-    if (!dateStr || typeof dateStr !== 'string') return null;
-    const parts = dateStr.trim().split('/');
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-    return dateStr;
-  };
-
-  // ----------------------------------------------------------------------------------
-  // 🔹 [ĐIỂM DỄ THAY ĐỔI 3]: ĐÓNG GÓI PAYLOAD GỬI LÊN BACKEND KHI BẤM NÚT SAVE
-  // ----------------------------------------------------------------------------------
+  // Submit tạo mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAlertError('');
@@ -190,20 +177,28 @@ export default function AddPage() {
 
     setSubmitting(true);
     try {
-      // ⚠️ Tự động convert ngày dd/MM/yyyy sang yyyy-MM-dd để Spring Boot nhận được
+      // Đóng gói payload tương thích cả 2 dạng: ID hoặc chuỗi Tên
+      const isNumCategory = !isNaN(Number(formData.category));
       const payload = {
-        [CONFIG.FIELDS.NAME]: formData.name.trim(),
-        [CONFIG.FIELDS.PRICE]: Number(formData.price),
-        [CONFIG.FIELDS.MANUFACTURER]: formData.manufacturer.trim(),
-        [CONFIG.FIELDS.PROD_DATE]: convertDateToBackend(formData.productionDate),
-        [CONFIG.FIELDS.IMPORT_DATE]: convertDateToBackend(formData.importDate),
-        [CONFIG.FIELDS.CATEGORY]: formData.category,
+        [CONFIG.FIELD_NAME]: formData.name.trim(),
+        [CONFIG.FIELD_PRICE]: Number(formData.price),
+        [CONFIG.FIELD_EXTRA]: formData.extra.trim(),
+        [CONFIG.FIELD_DATE1]: convertDateToBackend(formData.date1),
+        [CONFIG.FIELD_DATE2]: convertDateToBackend(formData.date2),
       };
 
-      await api.post(CONFIG.API.ENDPOINT_MAIN, payload);
+      // Tự động gán cả khóa ID lẫn Object danh mục
+      if (isNumCategory) {
+        payload[CONFIG.PARAM_SEARCH_CAT || 'categoryId'] = Number(formData.category);
+        payload.categoryId = Number(formData.category);
+        payload.departmentId = Number(formData.category);
+      } else {
+        payload[CONFIG.FIELD_CATEGORY] = formData.category;
+      }
 
-      // Lưu flash message vào sessionStorage để trang danh sách hiển thị
-      sessionStorage.setItem('flashMessage', CONFIG.MESSAGES.CREATE_SUCCESS);
+      await api.post(CONFIG.API_MAIN, payload);
+
+      sessionStorage.setItem('flashMessage', `Created new ${CONFIG.ENTITY_NAME.toLowerCase()} successfully`);
       navigate('/');
     } catch (err) {
       setAlertError(`Failed to create record: ${err.message}`);
@@ -218,7 +213,7 @@ export default function AddPage() {
       <Header />
 
       {/* 2. Tiêu đề màn hình */}
-      <h4 className="fw-bold mb-3">{CONFIG.LABELS.PAGE_ADD_TITLE}</h4>
+      <h4 className="fw-bold mb-3">Add New {CONFIG.ENTITY_NAME}</h4>
 
       {alertError && (
         <Alert variant="danger" dismissible onClose={() => setAlertError('')}>
@@ -226,23 +221,18 @@ export default function AddPage() {
         </Alert>
       )}
 
-      {/* ---------------------------------------------------------------------------- */}
-      {/* 🔹 [ĐIỂM DỄ THAY ĐỔI 4]: FORM CÁC Ô NHẬP LIỆU                                */}
-      {/* Muốn thêm ô nhập liệu mới thì chỉ cần copy 1 khối <Form.Group as={Row}> dưới: */}
-      {/* ---------------------------------------------------------------------------- */}
       <Card className="border border-secondary p-4 bg-white shadow-sm">
         <Form onSubmit={handleSubmit} noValidate>
           {/* Ô 1: TÊN ĐỐI TƯỢNG */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_NAME}: <span className="text-danger">*</span>
+              {CONFIG.ENTITY_NAME} name: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={8}>
               <Form.Control
                 type="text"
-                placeholder={`Enter ${CONFIG.LABELS.COL_NAME.toLowerCase()}`}
+                placeholder={`Enter name`}
                 value={formData.name}
-                maxLength={CONFIG.VALIDATION.NAME_MAX_LENGTH}
                 isInvalid={!!errors.name}
                 onChange={(e) => handleChange('name', e.target.value)}
               />
@@ -250,10 +240,10 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* Ô 2: GIÁ */}
+          {/* Ô 2: GIÁ TIỀN / LƯƠNG */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_PRICE}: <span className="text-danger">*</span>
+              {CONFIG.LABEL_PRICE || 'Price'}: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={4}>
               <Form.Control
@@ -264,67 +254,63 @@ export default function AddPage() {
                 onChange={(e) => handleChange('price', e.target.value)}
               />
               <Form.Control.Feedback type="invalid">{errors.price}</Form.Control.Feedback>
-              <Form.Text className="text-muted small">
-                &gt; {CONFIG.VALIDATION.PRICE_MIN} and &lt; {CONFIG.VALIDATION.PRICE_MAX}
-              </Form.Text>
             </Col>
           </Form.Group>
 
-          {/* Ô 3: NHÀ SẢN XUẤT / HÃNG */}
+          {/* Ô 3: THUỘC TÍNH PHỤ (Manufacturer / Position / Author...) */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_MANUFACTURER}: <span className="text-danger">*</span>
+              {CONFIG.LABEL_EXTRA || 'Manufacturer'}: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={8}>
               <Form.Control
                 type="text"
-                placeholder={`Enter ${CONFIG.LABELS.COL_MANUFACTURER.toLowerCase()}`}
-                value={formData.manufacturer}
-                maxLength={CONFIG.VALIDATION.MANUFACTURER_MAX_LENGTH}
-                isInvalid={!!errors.manufacturer}
-                onChange={(e) => handleChange('manufacturer', e.target.value)}
+                placeholder={`Enter ${CONFIG.LABEL_EXTRA || 'details'}`}
+                value={formData.extra}
+                isInvalid={!!errors.extra}
+                onChange={(e) => handleChange('extra', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.manufacturer}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.extra}</Form.Control.Feedback>
             </Col>
           </Form.Group>
 
-          {/* Ô 4 & 5: NGÀY SẢN XUẤT & NGÀY NHẬP */}
+          {/* Ô 4 & 5: NGÀY 1 & NGÀY 2 */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_PROD_DATE}: <span className="text-danger">*</span>
+              {CONFIG.LABEL_DATE1 || 'Date'}: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={3}>
               <Form.Control
                 type="text"
                 placeholder="dd/MM/yyyy"
-                value={formData.productionDate}
+                value={formData.date1}
                 maxLength={10}
-                isInvalid={!!errors.productionDate}
-                onChange={(e) => handleChange('productionDate', e.target.value)}
+                isInvalid={!!errors.date1}
+                onChange={(e) => handleChange('date1', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.productionDate}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.date1}</Form.Control.Feedback>
             </Col>
 
             <Form.Label column sm={2} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_IMPORT_DATE}:
+              {CONFIG.LABEL_DATE2 || 'Date 2'}:
             </Form.Label>
             <Col sm={3}>
               <Form.Control
                 type="text"
                 placeholder="dd/MM/yyyy"
-                value={formData.importDate}
+                value={formData.date2}
                 maxLength={10}
-                isInvalid={!!errors.importDate}
-                onChange={(e) => handleChange('importDate', e.target.value)}
+                isInvalid={!!errors.date2}
+                onChange={(e) => handleChange('date2', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.importDate}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.date2}</Form.Control.Feedback>
             </Col>
           </Form.Group>
 
-          {/* Ô 6: DANH MỤC PHỤ */}
+          {/* Ô 6: DANH MỤC */}
           <Form.Group as={Row} className="mb-4">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABELS.COL_CATEGORY}: <span className="text-danger">*</span>
+              Category: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={5}>
               <Form.Select
@@ -332,12 +318,24 @@ export default function AddPage() {
                 isInvalid={!!errors.category}
                 onChange={(e) => handleChange('category', e.target.value)}
               >
-                <option value="">-- Select {CONFIG.LABELS.COL_CATEGORY} --</option>
+                <option value="">-- Select Category --</option>
                 {categories.map((c) => {
-                  const catVal = c.categoryName || c.name || c.id || c;
-                  const catLabel = c.categoryName || c.name || c;
+                  const catVal =
+                    c.departmentId ||
+                    c.categoryId ||
+                    c.categoryName ||
+                    c.departmentName ||
+                    c.id ||
+                    c.name ||
+                    c;
+                  const catLabel =
+                    c.departmentName ||
+                    c.categoryName ||
+                    c.name ||
+                    c.title ||
+                    c;
                   return (
-                    <option key={c.id || catVal} value={catVal}>
+                    <option key={catVal} value={catVal}>
                       {catLabel}
                     </option>
                   );
@@ -346,24 +344,6 @@ export default function AddPage() {
               <Form.Control.Feedback type="invalid">{errors.category}</Form.Control.Feedback>
             </Col>
           </Form.Group>
-
-          {/* 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM Ô "SỐ LƯỢNG (QUANTITY)", COPY ĐOẠN NÀY:
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={3} className="text-sm-end fw-medium">
-              Quantity: <span className="text-danger">*</span>
-            </Form.Label>
-            <Col sm={4}>
-              <Form.Control
-                type="number"
-                placeholder="e.g. 50"
-                value={formData.quantity}
-                isInvalid={!!errors.quantity}
-                onChange={(e) => handleChange('quantity', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.quantity}</Form.Control.Feedback>
-            </Col>
-          </Form.Group>
-          */}
 
           {/* CẶP NÚT: [ SAVE ] [ BACK ] */}
           <Row>
@@ -375,7 +355,7 @@ export default function AddPage() {
                 style={{ minWidth: '100px' }}
                 disabled={submitting}
               >
-                {submitting ? 'Saving...' : CONFIG.LABELS.BTN_SAVE}
+                {submitting ? 'Saving...' : 'Save'}
               </Button>
               <Button
                 type="button"
@@ -384,7 +364,7 @@ export default function AddPage() {
                 style={{ minWidth: '100px' }}
                 onClick={() => navigate('/')}
               >
-                {CONFIG.LABELS.BTN_BACK}
+                Back
               </Button>
             </Col>
           </Row>

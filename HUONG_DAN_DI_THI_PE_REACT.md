@@ -1,97 +1,54 @@
-# 🚀 BÍ KÍP ĐI THI PE REACT - TUÂN THỦ 100% QUY TẮC PHÒNG THI EOS (SECTION B.3)
+# 🚀 BÍ KÍP ĐI THI PE REACT - BẢNG CẤU HÌNH SIÊU TỐC TRONG 30 GIÂY
 
-Tài liệu này hướng dẫn cách sử dụng bộ **GENERIC STARTER TEMPLATE** đã được chuẩn hóa để **tái sử dụng cho MỌI ĐỀ THI PE** môn SBA301 (hoặc các môn Single Page Application ReactJS tương tự) mà **không bị gán cứng (hardcode) tên đề bài**.
-
----
-
-## 📋 BẢNG ĐỐI CHIẾU 100% QUY CHẾ PHÒNG THI (SECTION B.3)
-
-| Mục | Quy định trong đề thi PE | Trạng thái trong Template | Cách thực hiện |
-| :---: | :--- | :---: | :--- |
-| **3.1** | Tên thư mục: `<ClassName>_<StudentID>_<ProjectCode>_PE` | ✅ Đã cấu hình sẵn | Khi nộp bài, đổi tên folder thành: ví dụ `SE1910_CE190709_SMS_PE` |
-| **3.2** | React JS, React-bootstrap, Vite, JavaScript trên NodeJS | ✅ Đã cài đặt chuẩn | Sử dụng đúng React + React-Bootstrap + Vite |
-| **3.3** | Dùng: React JS, React-Router-DOM, React-Bootstrap, axios, Vite.<br>⚠️ **KHÔNG DÙNG THƯ VIỆN KHÁC** | ✅ TUÂN THỦ TUYỆT ĐỐI | `package.json` **CHỈ CÓ ĐÚNG 5 THƯ VIỆN NÀY**, tuyệt đối an toàn với phần mềm EOS |
-| **3.4** | Tên component & thuộc tính đặt theo đề | ✅ Thiết kế Generic | Đặt tên dùng chung (`ListPage`, `DetailPage`, `AddPage`), toàn bộ text hiển thị điều khiển qua `config.js` |
-| **3.5** | Nén file zip nộp lên hệ thống EOS | ✅ Đã tối ưu | **XÓA THƯ MỤC `node_modules` TRƯỚC KHI NÉN ZIP** |
-| **3.6** | Kết nối REST API chạy tại **cổng 8080** | ✅ Đã cấu hình sẵn | Trong `src/api.js`: `BASE_URL = 'http://localhost:8080/api'` |
-| **3.7** | Địa chỉ truy cập ứng dụng là **http://localhost:5173/** | ✅ Đã cấu hình sẵn | Trong `vite.config.js`: `port: 5173, strictPort: true` |
-| **3.8** | Thư mục dự án BẮT BUỘC có file **`jsconfig.json`** | ✅ Đã tạo sẵn | Nội dung chuẩn 100% theo quy định EOS |
+Template này được thiết kế để **tái sử dụng 100% cho MỌI ĐỀ THI PE (Shoes, Employee, Book, Room, Car, Student...)** mà không cần đụng vào code giao diện!
 
 ---
 
-## 🏗️ CẤU TRÚC GENERIC DÙNG CHUNG (TÁI SỬ DỤNG CHO MỌI ĐỀ)
-
-```text
-src/
-├── api.js                         # Axios trỏ sẵn vào http://localhost:8080/api
-├── config.js                      # 🎯 TRUNG TÂM CẤU HÌNH (SỬA DUY NHẤT FILE NÀY KHI ĐI THI)
-├── App.jsx                        # React Router điều hướng generic: /, /add, /view/:id
-├── components/
-│   ├── Header.jsx                 # Header layout: [ Logo ... Date: dd/MM/yyyy ]
-│   ├── ConfirmationModal.jsx      # Modal xác nhận xóa generic (Yes / Close)
-│   └── PaginationControl.jsx      # Phân trang generic (Previous 1, 2, 3 ... Next)
-├── pages/
-│   ├── ListPage.jsx               # Màn hình danh sách chung (Lọc, bảng, xóa, phân trang)
-│   ├── DetailPage.jsx             # Màn hình xem chi tiết chung (View Details + nút Quay Lại)
-│   └── AddPage.jsx                # Màn hình thêm mới chung + Hệ thống Validation linh hoạt
-└── MasterCrudPage.jsx             # Màn hình dự phòng nếu đề thi yêu cầu Single-Page Modal CRUD
-```
-
----
-
-## ⚡ HƯỚNG DẪN 30 GIÂY KHI VÀO PHÒNG THI
-
-Dù đề thi là Quản lý Giày (`Shoes`), Sách (`Book`), Phòng khách sạn (`Room`), Ô tô (`Car`), hay Sinh viên (`Student`), bạn **KHÔNG CẦN SỬA CODE GIAO DIỆN HAY TÊN FILE**. Chỉ cần mở **`src/config.js`**:
+## ⚡ 30 GIÂY KHI VÀO PHÒNG THI: MỞ `src/config.js` SỬA CÁC DÒNG NÀY:
 
 ```javascript
-// 1. ĐỔI TÊN ĐỐI TƯỢNG (Ví dụ: 'Shoes', 'Book', 'Room', 'Student'...)
-const ENTITY_NAME = 'Shoes'; 
-
 export const CONFIG = {
-  ENTITY_NAME: ENTITY_NAME,
+  // 1. Tên đối tượng đề bài (VD: 'Book', 'Room', 'Car', 'Employee', 'Shoes'...)
+  ENTITY_NAME: 'Book',
 
-  // 2. ĐƯỜNG DẪN API THEO ĐỀ BÀI
-  API: {
-    ENDPOINT_MAIN: '/shoes',            // API chính (GET/POST/PUT/DELETE)
-    ENDPOINT_SEARCH: '/shoes/search',   // API tìm kiếm có điều kiện (nếu đề có)
-    ENDPOINT_CATEGORY: '/categories',   // API nạp dropdown danh mục phụ
-  },
+  // 2. Đường dẫn REST API Backend (port 8080)
+  API_MAIN: '/books',                // Endpoint thực thể chính
+  API_CATEGORY: '/categories',        // Endpoint danh mục phụ (hoặc '/departments')
 
-  // 3. TÊN CÁC TRƯỜNG TRONG JSON TRẢ VỀ TỪ BACKEND
-  FIELDS: {
-    ID: 'id',                           // id, shoesId, bookId...
-    NAME: 'name',                       // name, shoesName, title...
-    CATEGORY: 'category',               // category, categoryName, type...
-    MANUFACTURER: 'manufacturer',       // manufacturer, author, brand...
-    PRICE: 'price',                     // price, salary, cost...
-    PROD_DATE: 'productionDate',         // productionDate, createDate...
-    IMPORT_DATE: 'importDate',           // importDate, updateDate...
-  },
+  // 3. Tên thuộc tính trong JSON Backend trả về:
+  FIELD_ID: 'bookId',                // ID (id, bookId, employeeId...)
+  FIELD_NAME: 'title',               // Tên (title, fullName, name...)
+  FIELD_CATEGORY: 'categoryName',    // Danh mục (categoryName, departmentName...)
+  FIELD_PRICE: 'price',              // Giá / Lương (price, salary, cost...)
+  FIELD_EXTRA: 'author',             // Thuộc tính phụ (author, position, manufacturer...)
+  FIELD_DATE1: 'publishDate',        // Ngày 1 (publishDate, startDate, productionDate...)
+  FIELD_DATE2: 'importDate',         // Ngày 2 (importDate, dateOfBirth...)
 
-  // 4. LUẬT VALIDATION (BẬT/TẮT THEO ĐỀ)
-  VALIDATION: {
-    NAME_MAX_LENGTH: 100,
-    NAME_NO_DUPLICATE: true,            // true nếu đề cấm trùng tên
-    PRICE_MIN: 0,                       // Giá > 0
-    PRICE_MAX: 10000,                   // Giá < 10000
-    DATE_FORMAT_REGEX: /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, // dd/MM/yyyy
-  },
+  // 4. Tên tham số khi lọc / tìm kiếm (?name=...&category=...)
+  PARAM_SEARCH_NAME: 'name',
+  PARAM_SEARCH_CAT: 'category',      // Nếu đề Employee thì đổi thành 'departmentId'
+
+  // 5. Nhãn hiển thị tiêu đề cột
+  LABEL_PRICE: 'Price(đ)',           // hoặc 'Salary'
+  LABEL_EXTRA: 'Author',             // hoặc 'Position', 'Manufacturer'
 };
 ```
 
 ---
 
-## 🎁 TOÀN BỘ TÍNH NĂNG ĐÃ ĐƯỢC TÍCH HỢP ĐẦY ĐỦ:
-1. **Lọc dữ liệu (Filter)**: Ô tìm kiếm theo tên + dropdown danh mục + nút `Filter` (tự động thử API search hoặc fallback lọc client-side mượt mà).
-2. **Nút Reset bộ lọc**: Nút `Reset` cạnh Filter xóa trắng toàn bộ điều kiện và đưa danh sách về ban đầu.
-3. **Sắp xếp dữ liệu (Sort)**: Hỗ trợ Sort theo Giá tăng/giảm, Tên từ A-Z.
-4. **Phân trang (Pagination)**: Dòng đếm `Show x of y records` và thanh chuyển trang `Previous 1, 2, 3 ... Next`.
-5. **Xem chi tiết (View Details)**: Màn hình chi tiết đẹp mắt với nút `Quay Lai` trở về danh sách.
-6. **Thêm mới (Add New) có Full Validation**: Bắt buộc nhập, độ dài tối đa, kiểm tra trùng tên (**No duplicate**), khoảng giá, và kiểm tra định dạng ngày **dd/MM/yyyy**.
-7. **Cập nhật / Chỉnh sửa (Update / Edit)**:
-   - Màn hình [src/pages/EditPage.jsx](file:///src/pages/EditPage.jsx) tự động nạp dữ liệu cũ theo ID đổ vào form.
-   - Nút `Edit` trong cột `Action` của bảng danh sách (`Delete | View | Edit`).
-   - Gọi API `PUT` lưu dữ liệu và quay về danh sách hiển thị thông báo.
-8. **Xác nhận xóa (Confirmation Dialog)**: Popup xác nhận xóa chuẩn theo layout `Yes / Close`, sau khi xóa hiện thông báo `"Deleted successfully"` và tự nạp lại danh sách.
-9. **Chọn nhiều ô (Multi-select) & Xóa hàng loạt (Bulk Delete)**: Checkbox từng dòng + Checkbox chọn tất cả + Nút xóa các mục đã chọn.
-10. **Thông báo chuẩn đề**: Khi bảng trống hiện `"No records found"`, khi thêm mới/sửa/xóa đều có Alert thông báo tự tắt.
+## 🎁 CÁC TÍNH NĂNG TỰ ĐỘNG CHẠY 100%:
+1. **Phân trang Hybrid (Server-side + Client-side Fallback)**:
+   - Tự động gửi `?page=...&size=5` lên Spring Boot.
+   - Tự động nhận `totalPages`, `totalElements` của Spring Boot `PageResponse` / `PageDTO`.
+   - Bấm trang 1, 2, 3... tự gọi lại Backend lấy đúng dữ liệu.
+   - Nếu Backend trả mảng thuần không phân trang: Tự động cắt Client-side.
+2. **Auto-detect thông minh**:
+   - Tự động nhận diện trường ID (`departmentId`, `categoryId`, `id`...) và trường tên (`departmentName`, `categoryName`, `name`...) trong Dropdown danh mục mà không bị lỗi.
+3. **Format ngày tháng 2 chiều**:
+   - Khi hiển thị: Tự đổi ngày Backend ISO thành dạng chuẩn `dd/MM/yyyy`.
+   - Khi gửi đi (POST/PUT): Tự đổi `dd/MM/yyyy` thành `yyyy-MM-dd` để Spring Boot không bị lỗi parse Date.
+4. **Đầy đủ 4 màn hình chuẩn quy định**:
+   - `/`: Danh sách + Lọc + Reset + Phân trang + Nút Xóa (kèm Confirm Screen)
+   - `/view/:id`: Xem chi tiết + Nút Quay Lại
+   - `/add`: Thêm mới + Full Validation + Tự nạp danh mục
+   - `/edit/:id`: Cập nhật + Tự nạp dữ liệu cũ + PUT API

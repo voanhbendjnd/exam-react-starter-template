@@ -8,6 +8,8 @@ import Header from '../components/Header';
 /**
  * ====================================================================================
  * 📄 MÀN HÌNH XEM CHI TIẾT (VIEW DETAILS)
+ * ------------------------------------------------------------------------------------
+ * Tự động thích ứng với bất kỳ đối tượng nào (Shoes, Employee, Book, Room...)
  * ====================================================================================
  */
 export default function DetailPage() {
@@ -17,30 +19,17 @@ export default function DetailPage() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Helper format ngày hiển thị dd/MM/yyyy
   const formatDate = (val) => {
     if (!val) return '—';
     const d = new Date(val);
-    if (isNaN(d.getTime())) return String(val); // Nếu không phải ngày hợp lệ thì giữ nguyên chuỗi cũ
+    if (isNaN(d.getTime())) return String(val);
 
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
-
     return `${day}/${month}/${year}`;
-  };
-  // Helper chuyển đổi ngày từ Backend ISO Date (2026-11-07T...) sang dd/MM/yyyy
-  const formatDisplayDate = (val) => {
-    if (!val) return '—';
-    if (typeof val === 'string' && val.includes('T')) {
-      const d = new Date(val);
-      if (!isNaN(d.getTime())) {
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        return `${dd}/${mm}/${yyyy}`;
-      }
-    }
-    return val;
   };
 
   useEffect(() => {
@@ -48,11 +37,8 @@ export default function DetailPage() {
       setLoading(true);
       setError(null);
       try {
-        // Gọi API GET /api/{entity}/{id}
-        const data = await api.get(`${CONFIG.API.ENDPOINT_MAIN}/${id}`);
-        // Xử lý dữ liệu an toàn nếu backend bọc trong { data: ... }
-        const detailData = data?.data || data;
-        setItem(detailData);
+        const data = await api.get(`${CONFIG.API_MAIN}/${id}`);
+        setItem(data?.data || data);
       } catch (err) {
         setError(`Failed to load details: ${err.message}`);
       } finally {
@@ -65,25 +51,40 @@ export default function DetailPage() {
     }
   }, [id]);
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 [ĐIỂM DỄ THAY ĐỔI 1]: BÓC TÁCH CÁC TRƯỜNG DỮ LIỆU ĐỂ HIỂN THỊ
-  // Nếu đề thi yêu cầu thêm trường nào thì bóc tách thêm ở đây:
-  // ----------------------------------------------------------------------------------
-  const name = item?.[CONFIG.FIELDS.NAME] || item?.name || '—';
-  const manufacturer = item?.[CONFIG.FIELDS.MANUFACTURER] || item?.manufacturer || '—';
-  const category =
-    typeof item?.[CONFIG.FIELDS.CATEGORY] === 'object'
-      ? item?.[CONFIG.FIELDS.CATEGORY]?.name || item?.[CONFIG.FIELDS.CATEGORY]?.categoryName
-      : item?.[CONFIG.FIELDS.CATEGORY] || item?.categoryName || '—';
-  const price = item?.[CONFIG.FIELDS.PRICE] ?? item?.price;
-  const prodDate = formatDate(item?.[CONFIG.FIELDS.PROD_DATE]);
-  const importDate = formatDate(item?.[CONFIG.FIELDS.IMPORT_DATE]);
-  // const prodDate = formatDisplayDate(item?.[CONFIG.FIELDS.PROD_DATE] || item?.productionDate);
-  // const importDate = formatDisplayDate(item?.[CONFIG.FIELDS.IMPORT_DATE] || item?.importDate);
+  // Bóc tách thông minh các trường dữ liệu
+  const name =
+    item?.[CONFIG.FIELD_NAME] ||
+    item?.name ||
+    item?.fullName ||
+    item?.shoesName ||
+    item?.title ||
+    '—';
 
-  // 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM TRƯỜNG "QUANTITY", "STATUS", "DESCRIPTION":
-  // const quantity = item?.[CONFIG.FIELDS.QUANTITY] ?? item?.quantity ?? '—';
-  // const description = item?.[CONFIG.FIELDS.DESCRIPTION] ?? item?.description ?? '—';
+  const extra =
+    item?.[CONFIG.FIELD_EXTRA] ||
+    item?.manufacturer ||
+    item?.position ||
+    item?.author ||
+    item?.brand ||
+    '—';
+
+  const category =
+    typeof item?.[CONFIG.FIELD_CATEGORY] === 'object'
+      ? item?.[CONFIG.FIELD_CATEGORY]?.name || item?.[CONFIG.FIELD_CATEGORY]?.categoryName
+      : item?.[CONFIG.FIELD_CATEGORY] ||
+        item?.departmentName ||
+        item?.categoryName ||
+        item?.category ||
+        '—';
+
+  const price =
+    item?.[CONFIG.FIELD_PRICE] ??
+    item?.price ??
+    item?.salary ??
+    item?.cost;
+
+  const date1 = formatDate(item?.[CONFIG.FIELD_DATE1] || item?.productionDate || item?.startDate);
+  const date2 = formatDate(item?.[CONFIG.FIELD_DATE2] || item?.importDate || item?.dateOfBirth);
 
   return (
     <Container className="py-3" style={{ maxWidth: '800px' }}>
@@ -93,7 +94,7 @@ export default function DetailPage() {
       {/* 2. Khung View Details */}
       <Card className="border border-dark shadow-sm">
         <Card.Header className="bg-white border-0 pt-3 ps-4">
-          <h5 className="fw-bold text-uppercase">{CONFIG.LABELS.PAGE_DETAIL_TITLE}</h5>
+          <h5 className="fw-bold text-uppercase">VIEW DETAILS</h5>
         </Card.Header>
 
         <Card.Body className="py-4 px-5">
@@ -111,77 +112,62 @@ export default function DetailPage() {
               {/* DÒNG 1: TÊN ĐỐI TƯỢNG */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  {CONFIG.LABELS.COL_NAME}:
+                  {CONFIG.ENTITY_NAME} Name:
                 </Col>
                 <Col xs={7} className="fw-bold text-dark">
                   {name}
                 </Col>
               </Row>
 
-              {/* DÒNG 2: NHÀ SẢN XUẤT / HÃNG */}
+              {/* DÒNG 2: THUỘC TÍNH PHỤ (Manufacturer / Position / Author...) */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  {CONFIG.LABELS.COL_MANUFACTURER}:
+                  {CONFIG.LABEL_EXTRA || 'Manufacturer'}:
                 </Col>
                 <Col xs={7} className="text-dark">
-                  {manufacturer}
+                  {extra}
                 </Col>
               </Row>
 
-              {/* DÒNG 3: LOẠI / DANH MỤC */}
+              {/* DÒNG 3: DANH MỤC (Category / Department...) */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  Type / {CONFIG.LABELS.COL_CATEGORY}:
+                  Category:
                 </Col>
                 <Col xs={7} className="text-dark">
                   {category}
                 </Col>
               </Row>
 
-              {/* DÒNG 4: GIÁ TIỀN */}
+              {/* DÒNG 4: GIÁ TIỀN / LƯƠNG */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  {CONFIG.LABELS.COL_PRICE}:
+                  {CONFIG.LABEL_PRICE || 'Price(đ)'}:
                 </Col>
                 <Col xs={7} className="text-dark fw-bold">
                   {price !== undefined ? Number(price).toLocaleString() : '—'}
                 </Col>
               </Row>
 
-              {/* DÒNG 5: NGÀY SẢN XUẤT */}
+              {/* DÒNG 5: NGÀY 1 (Production date / Start date) */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  {CONFIG.LABELS.COL_PROD_DATE}:
+                  {CONFIG.LABEL_DATE1 || 'Production date'}:
                 </Col>
                 <Col xs={7} className="text-dark">
-                  {prodDate}
+                  {date1}
                 </Col>
               </Row>
 
-              {/* DÒNG 6: NGÀY NHẬP */}
+              {/* DÒNG 6: NGÀY 2 (Import Date / Date of birth) */}
               <Row className="mb-4">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  {CONFIG.LABELS.COL_IMPORT_DATE}:
+                  {CONFIG.LABEL_DATE2 || 'Import Date'}:
                 </Col>
                 <Col xs={7} className="text-dark">
-                  {importDate}
+                  {date2}
                 </Col>
               </Row>
-
-              {/* -------------------------------------------------------------------- */}
-              {/* 🔹 [ĐIỂM DỄ THAY ĐỔI 2]: THÊM DÒNG HIỂN THỊ MỚI VÀO ĐÂY NẾU ĐỀ YÊU CẦU */}
-              {/* Copy khối Row mẫu dưới đây:                                         */}
-              {/* -------------------------------------------------------------------- */}
-              {/*
-              <Row className="mb-2">
-                <Col xs={5} className="text-end fw-medium text-secondary">
-                  Quantity:
-                </Col>
-                <Col xs={7} className="text-dark">
-                  {quantity}
-                </Col>
-              </Row>
-              */}
 
               {/* NÚT QUAY LẠI TRANG DANH SÁCH */}
               <div className="text-center mt-4">
@@ -191,7 +177,7 @@ export default function DetailPage() {
                   style={{ minWidth: '120px' }}
                   onClick={() => navigate('/')}
                 >
-                  {CONFIG.LABELS.BTN_BACK_VN}
+                  Quay Lai
                 </Button>
               </div>
             </div>
