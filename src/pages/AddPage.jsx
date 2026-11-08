@@ -4,12 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { CONFIG } from '../config';
 import Header from '../components/Header';
+import { V } from '../utils/validator';
 
 /**
  * ====================================================================================
- * 📄 MÀN HÌNH THÊM MỚI (ADD PAGE)
- * ------------------------------------------------------------------------------------
- * Tự động thích ứng với bất kỳ đối tượng nào (Shoes, Employee, Book, Room...)
+ * 📄 MÀN HÌNH THÊM MỚI TỰ ĐỘNG THEO FIELD_1, FIELD_2, FIELD_3...
  * ====================================================================================
  */
 export default function AddPage() {
@@ -18,13 +17,18 @@ export default function AddPage() {
   const [categories, setCategories] = useState([]);
   const [existingItems, setExistingItems] = useState([]);
 
-  // State Form nhập liệu
+  // Tạo danh sách các trường linh hoạt được cấu hình
+  const dynamicFields = [
+    CONFIG.FIELD_1 && { key: CONFIG.FIELD_1, label: CONFIG.LABEL_1 },
+    CONFIG.FIELD_2 && { key: CONFIG.FIELD_2, label: CONFIG.LABEL_2 },
+    CONFIG.FIELD_3 && { key: CONFIG.FIELD_3, label: CONFIG.LABEL_3 },
+    CONFIG.FIELD_4 && { key: CONFIG.FIELD_4, label: CONFIG.LABEL_4 },
+    CONFIG.FIELD_5 && { key: CONFIG.FIELD_5, label: CONFIG.LABEL_5 },
+  ].filter(Boolean);
+
+  // State Form động
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
-    extra: '',
-    date1: '',
-    date2: '',
     category: '',
   });
 
@@ -32,7 +36,6 @@ export default function AddPage() {
   const [submitting, setSubmitting] = useState(false);
   const [alertError, setAlertError] = useState('');
 
-  // Nạp danh mục & danh sách hiện có (để check trùng tên nếu có)
   useEffect(() => {
     const fetchInitData = async () => {
       try {
@@ -63,26 +66,7 @@ export default function AddPage() {
     fetchInitData();
   }, []);
 
-  // Helper kiểm tra định dạng ngày dd/MM/yyyy
-  const isValidDateFormat = (dateStr) => {
-    if (!dateStr) return false;
-    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-    if (!regex.test(dateStr)) return false;
-
-    const parts = dateStr.split('/');
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-
-    const dateObj = new Date(year, month - 1, day);
-    return (
-      dateObj.getFullYear() === year &&
-      dateObj.getMonth() === month - 1 &&
-      dateObj.getDate() === day
-    );
-  };
-
-  // Helper chuyển đổi dd/MM/yyyy -> yyyy-MM-dd cho Spring Boot
+  // Helper convert dd/MM/yyyy -> yyyy-MM-dd
   const convertDateToBackend = (dateStr) => {
     if (!dateStr || typeof dateStr !== 'string') return null;
     const parts = dateStr.trim().split('/');
@@ -93,65 +77,50 @@ export default function AddPage() {
     return dateStr;
   };
 
-  // Validate form
+  const isDateField = (key) => /date|dob/i.test(key);
+  const isNumberField = (key) => /price|salary|cost|quantity|capacity/i.test(key);
+
+  // ----------------------------------------------------------------------------------
+  // 🛡️ HÀM VALIDATE DỮ LIỆU SIÊU TỐC DÙNG BỘ QUY TẮC V
+  // 👉 Muốn thêm luật cho trường nào, chỉ cần ghép bằng dấu ||:
+  //    VD: newErrors.email = V.required(val, 'Email') || V.email(val);
+  // ----------------------------------------------------------------------------------
   const validateForm = () => {
     const newErrors = {};
 
-    // 1. Tên
-    const trimmedName = formData.name.trim();
-    if (!trimmedName) {
-      newErrors.name = `${CONFIG.ENTITY_NAME} Name is mandatory.`;
-    } else {
-      // Check trùng tên
-      const isDuplicate = existingItems.some((item) => {
-        const existingName = (
-          item[CONFIG.FIELD_NAME] ||
-          item.name ||
-          item.fullName ||
-          item.shoesName ||
-          ''
-        ).trim();
-        return existingName.toLowerCase() === trimmedName.toLowerCase();
-      });
-      if (isDuplicate) {
-        newErrors.name = `${CONFIG.ENTITY_NAME} Name already exists. Duplicate is not allowed.`;
+    // 1. Tên: Bắt buộc + Cấm trùng lặp (No duplicate)
+    newErrors.name =
+      V.required(formData.name, `${CONFIG.ENTITY_NAME} Name`) ||
+      V.noDuplicate(formData.name, existingItems, CONFIG.FIELD_NAME, CONFIG.ENTITY_NAME);
+
+    // 2. Danh mục: Bắt buộc
+    newErrors.category = V.required(formData.category, 'Category');
+
+    // 3. Tự động áp dụng luật cho các trường FIELD_1, 2, 3...
+    dynamicFields.forEach((f) => {
+      const val = formData[f.key];
+      if (isDateField(f.key)) {
+        // Nếu là ngày chính (FIELD_3): Bắt buộc + Đúng format ngày
+        newErrors[f.key] =
+          (f.key === CONFIG.FIELD_3 ? V.required(val, f.label) : null) ||
+          V.date(val, f.label);
+      } else if (isNumberField(f.key)) {
+        // Bắt buộc + Số dương > 0
+        newErrors[f.key] = V.required(val, f.label) || V.positive(val, f.label);
+      } else {
+        // Text thường: Bắt buộc
+        newErrors[f.key] = V.required(val, f.label);
       }
-    }
+    });
 
-    // 2. Giá tiền / Lương
-    const priceStr = String(formData.price).trim();
-    if (!priceStr) {
-      newErrors.price = `${CONFIG.LABEL_PRICE || 'Price'} is mandatory.`;
-    } else {
-      const numPrice = Number(priceStr);
-      if (isNaN(numPrice) || numPrice <= 0) {
-        newErrors.price = `${CONFIG.LABEL_PRICE || 'Price'} must be greater than 0.`;
-      }
-    }
+    // 💡 NẾU ĐỀ THI CÓ THÊM TRƯỜNG TÙY BIẾN, BẠN CHỈ CẦN THÊM ĐÚNG 1 DÒNG DƯỚI ĐÂY:
+    // newErrors.email = V.required(formData.email, 'Email') || V.email(formData.email);
+    // newErrors.phone = V.required(formData.phone, 'Phone') || V.phone(formData.phone);
 
-    // 3. Thuộc tính phụ (Manufacturer / Position...)
-    if (!formData.extra.trim()) {
-      newErrors.extra = `${CONFIG.LABEL_EXTRA || 'Field'} is mandatory.`;
-    }
-
-    // 4. Ngày 1 (Bắt buộc, format dd/MM/yyyy)
-    const d1Str = formData.date1.trim();
-    if (!d1Str) {
-      newErrors.date1 = `${CONFIG.LABEL_DATE1 || 'Date'} is mandatory.`;
-    } else if (d1Str.length !== 10 || !isValidDateFormat(d1Str)) {
-      newErrors.date1 = `Must follow format dd/MM/yyyy (e.g. 20/01/2025).`;
-    }
-
-    // 5. Ngày 2 (Nếu nhập phải đúng format dd/MM/yyyy)
-    const d2Str = formData.date2.trim();
-    if (d2Str && (d2Str.length !== 10 || !isValidDateFormat(d2Str))) {
-      newErrors.date2 = `Must follow format dd/MM/yyyy (e.g. 25/01/2025).`;
-    }
-
-    // 6. Danh mục
-    if (!formData.category) {
-      newErrors.category = `Category is mandatory. Please select one.`;
-    }
+    // Dọn dẹp các trường hợp lệ (null/undefined)
+    Object.keys(newErrors).forEach((key) => {
+      if (!newErrors[key]) delete newErrors[key];
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,7 +133,6 @@ export default function AddPage() {
     }
   };
 
-  // Submit tạo mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAlertError('');
@@ -177,17 +145,22 @@ export default function AddPage() {
 
     setSubmitting(true);
     try {
-      // Đóng gói payload tương thích cả 2 dạng: ID hoặc chuỗi Tên
       const isNumCategory = !isNaN(Number(formData.category));
       const payload = {
-        [CONFIG.FIELD_NAME]: formData.name.trim(),
-        [CONFIG.FIELD_PRICE]: Number(formData.price),
-        [CONFIG.FIELD_EXTRA]: formData.extra.trim(),
-        [CONFIG.FIELD_DATE1]: convertDateToBackend(formData.date1),
-        [CONFIG.FIELD_DATE2]: convertDateToBackend(formData.date2),
+        [CONFIG.FIELD_NAME]: (formData.name || '').trim(),
       };
 
-      // Tự động gán cả khóa ID lẫn Object danh mục
+      dynamicFields.forEach((f) => {
+        const val = formData[f.key];
+        if (isDateField(f.key)) {
+          payload[f.key] = convertDateToBackend(val);
+        } else if (isNumberField(f.key)) {
+          payload[f.key] = Number(val);
+        } else {
+          payload[f.key] = (val || '').trim();
+        }
+      });
+
       if (isNumCategory) {
         payload[CONFIG.PARAM_SEARCH_CAT || 'categoryId'] = Number(formData.category);
         payload.categoryId = Number(formData.category);
@@ -209,10 +182,7 @@ export default function AddPage() {
 
   return (
     <Container className="py-3" style={{ maxWidth: '800px' }}>
-      {/* 1. Header: [ Logo ... Date: dd/MM/yyyy ] */}
       <Header />
-
-      {/* 2. Tiêu đề màn hình */}
       <h4 className="fw-bold mb-3">Add New {CONFIG.ENTITY_NAME}</h4>
 
       {alertError && (
@@ -223,16 +193,16 @@ export default function AddPage() {
 
       <Card className="border border-secondary p-4 bg-white shadow-sm">
         <Form onSubmit={handleSubmit} noValidate>
-          {/* Ô 1: TÊN ĐỐI TƯỢNG */}
+          {/* Ô TÊN */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.ENTITY_NAME} name: <span className="text-danger">*</span>
+              {CONFIG.ENTITY_NAME} Name: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={8}>
               <Form.Control
                 type="text"
                 placeholder={`Enter name`}
-                value={formData.name}
+                value={formData.name || ''}
                 isInvalid={!!errors.name}
                 onChange={(e) => handleChange('name', e.target.value)}
               />
@@ -240,100 +210,46 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* Ô 2: GIÁ TIỀN / LƯƠNG */}
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABEL_PRICE || 'Price'}: <span className="text-danger">*</span>
-            </Form.Label>
-            <Col sm={4}>
-              <Form.Control
-                type="number"
-                placeholder="e.g. 500"
-                value={formData.price}
-                isInvalid={!!errors.price}
-                onChange={(e) => handleChange('price', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.price}</Form.Control.Feedback>
-            </Col>
-          </Form.Group>
+          {/* CÁC TRƯỜNG LINH HOẠT FIELD_1, 2, 3, 4, 5 TỰ ĐỘNG RENDER */}
+          {dynamicFields.map((f) => {
+            const isDate = isDateField(f.key);
+            const isNum = isNumberField(f.key);
 
-          {/* Ô 3: THUỘC TÍNH PHỤ (Manufacturer / Position / Author...) */}
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABEL_EXTRA || 'Manufacturer'}: <span className="text-danger">*</span>
-            </Form.Label>
-            <Col sm={8}>
-              <Form.Control
-                type="text"
-                placeholder={`Enter ${CONFIG.LABEL_EXTRA || 'details'}`}
-                value={formData.extra}
-                isInvalid={!!errors.extra}
-                onChange={(e) => handleChange('extra', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.extra}</Form.Control.Feedback>
-            </Col>
-          </Form.Group>
+            return (
+              <Form.Group as={Row} className="mb-3" key={f.key}>
+                <Form.Label column sm={3} className="text-sm-end fw-medium">
+                  {f.label}: <span className="text-danger">*</span>
+                </Form.Label>
+                <Col sm={isDate || isNum ? 4 : 8}>
+                  <Form.Control
+                    type={isNum ? 'number' : 'text'}
+                    placeholder={isDate ? 'dd/MM/yyyy' : `Enter ${f.label.toLowerCase()}`}
+                    maxLength={isDate ? 10 : undefined}
+                    value={formData[f.key] || ''}
+                    isInvalid={!!errors[f.key]}
+                    onChange={(e) => handleChange(f.key, e.target.value)}
+                  />
+                  <Form.Control.Feedback type="invalid">{errors[f.key]}</Form.Control.Feedback>
+                </Col>
+              </Form.Group>
+            );
+          })}
 
-          {/* Ô 4 & 5: NGÀY 1 & NGÀY 2 */}
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={3} className="text-sm-end fw-medium">
-              {CONFIG.LABEL_DATE1 || 'Date'}: <span className="text-danger">*</span>
-            </Form.Label>
-            <Col sm={3}>
-              <Form.Control
-                type="text"
-                placeholder="dd/MM/yyyy"
-                value={formData.date1}
-                maxLength={10}
-                isInvalid={!!errors.date1}
-                onChange={(e) => handleChange('date1', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.date1}</Form.Control.Feedback>
-            </Col>
-
-            <Form.Label column sm={2} className="text-sm-end fw-medium">
-              {CONFIG.LABEL_DATE2 || 'Date 2'}:
-            </Form.Label>
-            <Col sm={3}>
-              <Form.Control
-                type="text"
-                placeholder="dd/MM/yyyy"
-                value={formData.date2}
-                maxLength={10}
-                isInvalid={!!errors.date2}
-                onChange={(e) => handleChange('date2', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.date2}</Form.Control.Feedback>
-            </Col>
-          </Form.Group>
-
-          {/* Ô 6: DANH MỤC */}
+          {/* DROPDOWN CATEGORY */}
           <Form.Group as={Row} className="mb-4">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               Category: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={5}>
               <Form.Select
-                value={formData.category}
+                value={formData.category || ''}
                 isInvalid={!!errors.category}
                 onChange={(e) => handleChange('category', e.target.value)}
               >
                 <option value="">-- Select Category --</option>
                 {categories.map((c) => {
-                  const catVal =
-                    c.departmentId ||
-                    c.categoryId ||
-                    c.categoryName ||
-                    c.departmentName ||
-                    c.id ||
-                    c.name ||
-                    c;
-                  const catLabel =
-                    c.departmentName ||
-                    c.categoryName ||
-                    c.name ||
-                    c.title ||
-                    c;
+                  const catVal = c.departmentId || c.categoryId || c.categoryName || c.departmentName || c.id || c.name || c;
+                  const catLabel = c.departmentName || c.categoryName || c.name || c.title || c;
                   return (
                     <option key={catVal} value={catVal}>
                       {catLabel}
@@ -345,25 +261,13 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* CẶP NÚT: [ SAVE ] [ BACK ] */}
+          {/* BUTTONS */}
           <Row>
             <Col sm={{ span: 8, offset: 3 }} className="d-flex gap-3">
-              <Button
-                type="submit"
-                variant="outline-primary"
-                className="px-4"
-                style={{ minWidth: '100px' }}
-                disabled={submitting}
-              >
+              <Button type="submit" variant="outline-primary" className="px-4" style={{ minWidth: '100px' }} disabled={submitting}>
                 {submitting ? 'Saving...' : 'Save'}
               </Button>
-              <Button
-                type="button"
-                variant="outline-secondary"
-                className="px-4"
-                style={{ minWidth: '100px' }}
-                onClick={() => navigate('/')}
-              >
+              <Button type="button" variant="outline-secondary" className="px-4" style={{ minWidth: '100px' }} onClick={() => navigate('/')}>
                 Back
               </Button>
             </Col>

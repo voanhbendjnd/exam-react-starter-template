@@ -4,12 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 import { CONFIG } from '../config';
 import Header from '../components/Header';
+import { V } from '../utils/validator';
 
 /**
  * ====================================================================================
- * 📄 MÀN HÌNH CHỈNH SỬA / CẬP NHẬT (EDIT PAGE)
- * ------------------------------------------------------------------------------------
- * Tự động thích ứng với bất kỳ đối tượng nào (Shoes, Employee, Book, Room...)
+ * 📄 MÀN HÌNH CHỈNH SỬA TỰ ĐỘNG THEO FIELD_1, FIELD_2, FIELD_3...
  * ====================================================================================
  */
 export default function EditPage() {
@@ -19,13 +18,16 @@ export default function EditPage() {
   const [categories, setCategories] = useState([]);
   const [loadingInit, setLoadingInit] = useState(true);
 
-  // State Form chỉnh sửa
+  const dynamicFields = [
+    CONFIG.FIELD_1 && { key: CONFIG.FIELD_1, label: CONFIG.LABEL_1 },
+    CONFIG.FIELD_2 && { key: CONFIG.FIELD_2, label: CONFIG.LABEL_2 },
+    CONFIG.FIELD_3 && { key: CONFIG.FIELD_3, label: CONFIG.LABEL_3 },
+    CONFIG.FIELD_4 && { key: CONFIG.FIELD_4, label: CONFIG.LABEL_4 },
+    CONFIG.FIELD_5 && { key: CONFIG.FIELD_5, label: CONFIG.LABEL_5 },
+  ].filter(Boolean);
+
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
-    extra: '',
-    date1: '',
-    date2: '',
     category: '',
   });
 
@@ -33,10 +35,9 @@ export default function EditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [alertError, setAlertError] = useState('');
 
-  // Helper format ngày từ Backend (nếu là dạng ISO "2026-11-07T...") sang "dd/MM/yyyy"
   const formatDateToInput = (val) => {
     if (!val) return '';
-    if (typeof val === 'string' && (val.includes('T') || val.includes('-'))) {
+    if (typeof val === 'string' && (val.includes('T') || (val.includes('-') && val.length === 10))) {
       const d = new Date(val);
       if (!isNaN(d.getTime())) {
         const dd = String(d.getDate()).padStart(2, '0');
@@ -48,7 +49,6 @@ export default function EditPage() {
     return val;
   };
 
-  // Helper chuyển đổi dd/MM/yyyy -> yyyy-MM-dd cho Spring Boot
   const convertDateToBackend = (dateStr) => {
     if (!dateStr || typeof dateStr !== 'string') return null;
     const parts = dateStr.trim().split('/');
@@ -59,7 +59,9 @@ export default function EditPage() {
     return dateStr;
   };
 
-  // 1. Tải danh mục và dữ liệu cũ của bản ghi cần sửa
+  const isDateField = (key) => /date|dob/i.test(key);
+  const isNumberField = (key) => /price|salary|cost|quantity|capacity/i.test(key);
+
   useEffect(() => {
     const fetchEditData = async () => {
       setLoadingInit(true);
@@ -82,36 +84,22 @@ export default function EditPage() {
             currentItem.categoryName ||
             '';
 
-          setFormData({
+          const initData = {
             name:
               currentItem[CONFIG.FIELD_NAME] ||
               currentItem.name ||
               currentItem.fullName ||
               currentItem.shoesName ||
               '',
-            price:
-              currentItem[CONFIG.FIELD_PRICE] ??
-              currentItem.price ??
-              currentItem.salary ??
-              '',
-            extra:
-              currentItem[CONFIG.FIELD_EXTRA] ||
-              currentItem.manufacturer ||
-              currentItem.position ||
-              currentItem.author ||
-              '',
-            date1: formatDateToInput(
-              currentItem[CONFIG.FIELD_DATE1] ||
-              currentItem.productionDate ||
-              currentItem.startDate
-            ),
-            date2: formatDateToInput(
-              currentItem[CONFIG.FIELD_DATE2] ||
-              currentItem.importDate ||
-              currentItem.dateOfBirth
-            ),
             category: catVal,
+          };
+
+          dynamicFields.forEach((f) => {
+            const rawVal = currentItem[f.key];
+            initData[f.key] = isDateField(f.key) ? formatDateToInput(rawVal) : (rawVal ?? '');
           });
+
+          setFormData(initData);
         }
       } catch (err) {
         setAlertError(`Failed to load record details: ${err.message}`);
@@ -125,25 +113,31 @@ export default function EditPage() {
     }
   }, [id]);
 
-  // 2. Validate form
+  // ----------------------------------------------------------------------------------
+  // 🛡️ VALIDATE DÙNG BỘ QUY TẮC V
+  // ----------------------------------------------------------------------------------
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = `${CONFIG.ENTITY_NAME} Name is mandatory.`;
-    }
-    if (!String(formData.price).trim()) {
-      newErrors.price = `${CONFIG.LABEL_PRICE || 'Price'} is mandatory.`;
-    }
-    if (!formData.extra.trim()) {
-      newErrors.extra = `${CONFIG.LABEL_EXTRA || 'Field'} is mandatory.`;
-    }
-    if (!formData.date1.trim()) {
-      newErrors.date1 = `${CONFIG.LABEL_DATE1 || 'Date'} is mandatory.`;
-    }
-    if (!formData.category) {
-      newErrors.category = 'Category is mandatory.';
-    }
+    newErrors.name = V.required(formData.name, `${CONFIG.ENTITY_NAME} Name`);
+    newErrors.category = V.required(formData.category, 'Category');
+
+    dynamicFields.forEach((f) => {
+      const val = formData[f.key];
+      if (isDateField(f.key)) {
+        newErrors[f.key] =
+          (f.key === CONFIG.FIELD_3 ? V.required(val, f.label) : null) ||
+          V.date(val, f.label);
+      } else if (isNumberField(f.key)) {
+        newErrors[f.key] = V.required(val, f.label) || V.positive(val, f.label);
+      } else {
+        newErrors[f.key] = V.required(val, f.label);
+      }
+    });
+
+    Object.keys(newErrors).forEach((key) => {
+      if (!newErrors[key]) delete newErrors[key];
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -156,7 +150,6 @@ export default function EditPage() {
     }
   };
 
-  // 3. Gửi cập nhật PUT lên Backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAlertError('');
@@ -173,12 +166,19 @@ export default function EditPage() {
       const payload = {
         [CONFIG.FIELD_ID]: id,
         id: id,
-        [CONFIG.FIELD_NAME]: formData.name.trim(),
-        [CONFIG.FIELD_PRICE]: Number(formData.price),
-        [CONFIG.FIELD_EXTRA]: formData.extra.trim(),
-        [CONFIG.FIELD_DATE1]: convertDateToBackend(formData.date1),
-        [CONFIG.FIELD_DATE2]: convertDateToBackend(formData.date2),
+        [CONFIG.FIELD_NAME]: (formData.name || '').trim(),
       };
+
+      dynamicFields.forEach((f) => {
+        const val = formData[f.key];
+        if (isDateField(f.key)) {
+          payload[f.key] = convertDateToBackend(val);
+        } else if (isNumberField(f.key)) {
+          payload[f.key] = Number(val);
+        } else {
+          payload[f.key] = (val || '').trim();
+        }
+      });
 
       if (isNumCategory) {
         payload[CONFIG.PARAM_SEARCH_CAT || 'categoryId'] = Number(formData.category);
@@ -201,10 +201,7 @@ export default function EditPage() {
 
   return (
     <Container className="py-3" style={{ maxWidth: '800px' }}>
-      {/* 1. Header: [ Logo ... Date: dd/MM/yyyy ] */}
       <Header />
-
-      {/* 2. Tiêu đề màn hình Sửa */}
       <h4 className="fw-bold mb-3">Edit {CONFIG.ENTITY_NAME}</h4>
 
       {alertError && (
@@ -221,7 +218,6 @@ export default function EditPage() {
           </div>
         ) : (
           <Form onSubmit={handleSubmit} noValidate>
-            {/* TÊN */}
             <Form.Group as={Row} className="mb-3">
               <Form.Label column sm={3} className="text-sm-end fw-medium">
                 {CONFIG.ENTITY_NAME} Name: <span className="text-danger">*</span>
@@ -229,7 +225,7 @@ export default function EditPage() {
               <Col sm={8}>
                 <Form.Control
                   type="text"
-                  value={formData.name}
+                  value={formData.name || ''}
                   isInvalid={!!errors.name}
                   onChange={(e) => handleChange('name', e.target.value)}
                 />
@@ -237,98 +233,44 @@ export default function EditPage() {
               </Col>
             </Form.Group>
 
-            {/* GIÁ / LƯƠNG */}
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm={3} className="text-sm-end fw-medium">
-                {CONFIG.LABEL_PRICE || 'Price'}: <span className="text-danger">*</span>
-              </Form.Label>
-              <Col sm={4}>
-                <Form.Control
-                  type="number"
-                  value={formData.price}
-                  isInvalid={!!errors.price}
-                  onChange={(e) => handleChange('price', e.target.value)}
-                />
-                <Form.Control.Feedback type="invalid">{errors.price}</Form.Control.Feedback>
-              </Col>
-            </Form.Group>
+            {dynamicFields.map((f) => {
+              const isDate = isDateField(f.key);
+              const isNum = isNumberField(f.key);
 
-            {/* THUỘC TÍNH PHỤ */}
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm={3} className="text-sm-end fw-medium">
-                {CONFIG.LABEL_EXTRA || 'Manufacturer'}: <span className="text-danger">*</span>
-              </Form.Label>
-              <Col sm={8}>
-                <Form.Control
-                  type="text"
-                  value={formData.extra}
-                  isInvalid={!!errors.extra}
-                  onChange={(e) => handleChange('extra', e.target.value)}
-                />
-                <Form.Control.Feedback type="invalid">{errors.extra}</Form.Control.Feedback>
-              </Col>
-            </Form.Group>
+              return (
+                <Form.Group as={Row} className="mb-3" key={f.key}>
+                  <Form.Label column sm={3} className="text-sm-end fw-medium">
+                    {f.label}: <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Col sm={isDate || isNum ? 4 : 8}>
+                    <Form.Control
+                      type={isNum ? 'number' : 'text'}
+                      placeholder={isDate ? 'dd/MM/yyyy' : `Enter ${f.label.toLowerCase()}`}
+                      maxLength={isDate ? 10 : undefined}
+                      value={formData[f.key] || ''}
+                      isInvalid={!!errors[f.key]}
+                      onChange={(e) => handleChange(f.key, e.target.value)}
+                    />
+                    <Form.Control.Feedback type="invalid">{errors[f.key]}</Form.Control.Feedback>
+                  </Col>
+                </Form.Group>
+              );
+            })}
 
-            {/* NGÀY 1 & NGÀY 2 */}
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm={3} className="text-sm-end fw-medium">
-                {CONFIG.LABEL_DATE1 || 'Date 1'}: <span className="text-danger">*</span>
-              </Form.Label>
-              <Col sm={3}>
-                <Form.Control
-                  type="text"
-                  placeholder="dd/MM/yyyy"
-                  value={formData.date1}
-                  maxLength={10}
-                  isInvalid={!!errors.date1}
-                  onChange={(e) => handleChange('date1', e.target.value)}
-                />
-                <Form.Control.Feedback type="invalid">{errors.date1}</Form.Control.Feedback>
-              </Col>
-
-              <Form.Label column sm={2} className="text-sm-end fw-medium">
-                {CONFIG.LABEL_DATE2 || 'Date 2'}:
-              </Form.Label>
-              <Col sm={3}>
-                <Form.Control
-                  type="text"
-                  placeholder="dd/MM/yyyy"
-                  value={formData.date2}
-                  maxLength={10}
-                  isInvalid={!!errors.date2}
-                  onChange={(e) => handleChange('date2', e.target.value)}
-                />
-                <Form.Control.Feedback type="invalid">{errors.date2}</Form.Control.Feedback>
-              </Col>
-            </Form.Group>
-
-            {/* DANH MỤC */}
             <Form.Group as={Row} className="mb-4">
               <Form.Label column sm={3} className="text-sm-end fw-medium">
                 Category: <span className="text-danger">*</span>
               </Form.Label>
               <Col sm={5}>
                 <Form.Select
-                  value={formData.category}
+                  value={formData.category || ''}
                   isInvalid={!!errors.category}
                   onChange={(e) => handleChange('category', e.target.value)}
                 >
                   <option value="">-- Select Category --</option>
                   {categories.map((c) => {
-                    const catVal =
-                      c.departmentId ||
-                      c.categoryId ||
-                      c.categoryName ||
-                      c.departmentName ||
-                      c.id ||
-                      c.name ||
-                      c;
-                    const catLabel =
-                      c.departmentName ||
-                      c.categoryName ||
-                      c.name ||
-                      c.title ||
-                      c;
+                    const catVal = c.departmentId || c.categoryId || c.categoryName || c.departmentName || c.id || c.name || c;
+                    const catLabel = c.departmentName || c.categoryName || c.name || c.title || c;
                     return (
                       <option key={catVal} value={catVal}>
                         {catLabel}
@@ -340,25 +282,12 @@ export default function EditPage() {
               </Col>
             </Form.Group>
 
-            {/* NÚT THAO TÁC */}
             <Row>
               <Col sm={{ span: 8, offset: 3 }} className="d-flex gap-3">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="px-4"
-                  style={{ minWidth: '130px' }}
-                  disabled={submitting}
-                >
+                <Button type="submit" variant="primary" className="px-4" style={{ minWidth: '130px' }} disabled={submitting}>
                   {submitting ? 'Saving...' : 'Save Changes'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline-secondary"
-                  className="px-4"
-                  style={{ minWidth: '100px' }}
-                  onClick={() => navigate('/')}
-                >
+                <Button type="button" variant="outline-secondary" className="px-4" style={{ minWidth: '100px' }} onClick={() => navigate('/')}>
                   Back
                 </Button>
               </Col>

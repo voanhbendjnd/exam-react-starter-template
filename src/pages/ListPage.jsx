@@ -9,49 +9,57 @@ import PaginationControl from '../components/PaginationControl';
 
 /**
  * ====================================================================================
- * 📄 MÀN HÌNH DANH SÁCH GENERIC (TỰ ĐỘNG THÍCH ỨNG VỚI MỌI ĐỀ THI)
- * ------------------------------------------------------------------------------------
- * 💡 Đã tích hợp:
- *  - Phân trang Server-side (PageDTO / PageResponse của Spring Boot)
- *  - Phân trang Client-side fallback (nếu Backend trả mảng thuần)
- *  - Auto-detect thông minh các trường dữ liệu
+ * 📄 MÀN HÌNH DANH SÁCH TỰ ĐỘNG THEO FIELD_1, FIELD_2, FIELD_3...
  * ====================================================================================
  */
 export default function ListPage() {
   const navigate = useNavigate();
 
-  // 1. STATE DỮ LIỆU
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, text: '', variant: 'success' });
 
-  // 2. STATE BỘ LỌC (FILTER)
+  // Bộ lọc
   const [filterCategory, setFilterCategory] = useState('');
   const [filterName, setFilterName] = useState('');
 
-  // 3. STATE PHÂN TRANG
+  // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const pageSize = CONFIG.PAGE_SIZE || 5;
 
-  // 4. STATE XÓA BẢN GHI
+  // Xóa
   const [deleteModalShow, setDeleteModalShow] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Helper hiển thị thông báo Alert
+  // Helper hiển thị alert
   const showAlert = (text, variant = 'success') => {
     setAlertInfo({ show: true, text, variant });
-    setTimeout(() => {
-      setAlertInfo({ show: false, text: '', variant: 'success' });
-    }, 3500);
+    setTimeout(() => setAlertInfo({ show: false, text: '', variant: 'success' }), 3500);
   };
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 1. TẢI DANH MỤC PHỤ (Categories / Departments / Room Types...)
-  // ----------------------------------------------------------------------------------
+  // Helper format ngày nếu giá trị là dạng ISO hoặc Date
+  const formatCellValue = (val) => {
+    if (val === undefined || val === null || val === '') return '—';
+    if (typeof val === 'string' && (val.includes('T') || (val.includes('-') && val.length === 10))) {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      }
+    }
+    if (typeof val === 'number') {
+      return val.toLocaleString();
+    }
+    return String(val);
+  };
+
+  // 1. Tải danh mục
   const loadCategories = async () => {
     try {
       const data = await api.get(CONFIG.API_CATEGORY);
@@ -62,14 +70,12 @@ export default function ListPage() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 2. TẢI DỮ LIỆU & PHÂN TRANG (HYBRID SERVER-SIDE + CLIENT-SIDE FALLBACK)
-  // ----------------------------------------------------------------------------------
+  // 2. Tải dữ liệu & phân trang
   const loadData = async (page = 1, searchName = filterName, searchCat = filterCategory) => {
     setLoading(true);
     try {
       const params = {
-        page: page - 1, // Spring Boot tính trang từ 0
+        page: page - 1,
         size: pageSize,
       };
 
@@ -80,17 +86,13 @@ export default function ListPage() {
         params[CONFIG.PARAM_SEARCH_CAT || 'category'] = searchCat;
       }
 
-      // Gọi API chính (VD: /api/shoes, /api/employees, /api/rooms...)
       const response = await api.get(CONFIG.API_MAIN, { params });
 
-      // 🔥 Bóc tách thông minh:
       if (response && response.totalPages !== undefined) {
-        // Backend Spring Boot có phân trang Server-side (PageResponse / PageDTO)
         setItems(response.content || []);
         setTotalPages(response.totalPages || 1);
         setTotalElements(response.totalElements ?? (response.content ? response.content.length : 0));
       } else if (Array.isArray(response)) {
-        // Backend trả về mảng thuần không phân trang -> Tự động cắt Client-side
         setTotalElements(response.length);
         setTotalPages(Math.ceil(response.length / pageSize) || 1);
         const startIndex = (page - 1) * pageSize;
@@ -131,9 +133,6 @@ export default function ListPage() {
     }
   }, []);
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 3. XỬ LÝ LỌC & RESET
-  // ----------------------------------------------------------------------------------
   const handleFilter = (e) => {
     if (e) e.preventDefault();
     setCurrentPage(1);
@@ -147,9 +146,6 @@ export default function ListPage() {
     loadData(1, '', '');
   };
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 4. XỬ LÝ CHUYỂN TRANG
-  // ----------------------------------------------------------------------------------
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
       setCurrentPage(newPage);
@@ -157,9 +153,6 @@ export default function ListPage() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 🔹 5. XỬ LÝ XÓA BẢN GHI
-  // ----------------------------------------------------------------------------------
   const handleOpenDeleteDialog = (item) => {
     setItemToDelete(item);
     setDeleteModalShow(true);
@@ -168,7 +161,7 @@ export default function ListPage() {
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
     setDeleting(true);
-    const id = itemToDelete[CONFIG.FIELD_ID] || itemToDelete.id || itemToDelete.employeeId || itemToDelete.shoesId;
+    const id = itemToDelete[CONFIG.FIELD_ID] || itemToDelete.id;
     try {
       await api.delete(`${CONFIG.API_MAIN}/${id}`);
       setDeleteModalShow(false);
@@ -182,12 +175,21 @@ export default function ListPage() {
     }
   };
 
+  // 🔥 TÍNH TỔNG SỐ CỘT ĐỘNG (Để colSpan luôn tự khớp mà không bị lệch bảng)
+  const dynamicCols = [
+    CONFIG.FIELD_1 && CONFIG.LABEL_1,
+    CONFIG.FIELD_2 && CONFIG.LABEL_2,
+    CONFIG.FIELD_3 && CONFIG.LABEL_3,
+    CONFIG.FIELD_4 && CONFIG.LABEL_4,
+    CONFIG.FIELD_5 && CONFIG.LABEL_5,
+  ].filter(Boolean);
+
+  const totalCols = 3 + dynamicCols.length + 1; // # + Name + Category + [Dynamic Cols] + Action
+
   return (
-    <Container className="py-3" style={{ maxWidth: '980px' }}>
-      {/* 1. Header: [ Logo ... Date: dd/MM/yyyy ] */}
+    <Container className="py-3" style={{ maxWidth: '1000px' }}>
       <Header />
 
-      {/* 2. Tiêu đề trang & Nút Refresh */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="fw-bold mb-0">{CONFIG.ENTITY_NAME} List</h4>
         <Button variant="outline-secondary" size="sm" onClick={() => loadData(currentPage)} title="Tải lại dữ liệu">
@@ -195,20 +197,14 @@ export default function ListPage() {
         </Button>
       </div>
 
-      {/* 3. Alert thông báo */}
       {alertInfo.show && (
-        <Alert
-          variant={alertInfo.variant}
-          dismissible
-          onClose={() => setAlertInfo({ show: false, text: '', variant: 'success' })}
-        >
+        <Alert variant={alertInfo.variant} dismissible onClose={() => setAlertInfo({ show: false, text: '', variant: 'success' })}>
           {alertInfo.text}
         </Alert>
       )}
 
-      {/* 4. KHUNG TÌM KIẾM & LỌC DỮ LIỆU */}
+      {/* FILTER SECTION */}
       <Form onSubmit={handleFilter} className="mb-4">
-        {/* Dropdown Danh mục */}
         <Row className="mb-2 align-items-center">
           <Col xs={3} sm={2} className="text-end fw-medium">
             Category:
@@ -221,21 +217,8 @@ export default function ListPage() {
             >
               <option value="">-- All Categories --</option>
               {categories.map((c) => {
-                // Tự động nhận diện Value và Label
-                const catVal =
-                  c.departmentId ||
-                  c.categoryId ||
-                  c.categoryName ||
-                  c.departmentName ||
-                  c.id ||
-                  c.name ||
-                  c;
-                const catLabel =
-                  c.departmentName ||
-                  c.categoryName ||
-                  c.name ||
-                  c.title ||
-                  c;
+                const catVal = c.departmentId || c.categoryId || c.categoryName || c.departmentName || c.id || c.name || c;
+                const catLabel = c.departmentName || c.categoryName || c.name || c.title || c;
                 return (
                   <option key={catVal} value={catVal}>
                     {catLabel}
@@ -246,7 +229,6 @@ export default function ListPage() {
           </Col>
         </Row>
 
-        {/* Textbox Tìm theo tên */}
         <Row className="align-items-center">
           <Col xs={3} sm={2} className="text-end fw-medium">
             {CONFIG.ENTITY_NAME} Name:
@@ -261,40 +243,20 @@ export default function ListPage() {
             />
           </Col>
           <Col xs={12} sm={5} className="mt-2 mt-sm-0 d-flex gap-2 justify-content-start">
-            <Button
-              type="submit"
-              variant="outline-primary"
-              size="sm"
-              className="px-3"
-              style={{ minWidth: '80px' }}
-            >
+            <Button type="submit" variant="outline-primary" size="sm" className="px-3" style={{ minWidth: '80px' }}>
               Filter
             </Button>
-            <Button
-              type="button"
-              variant="outline-secondary"
-              size="sm"
-              className="px-2"
-              onClick={handleReset}
-              title="Xóa bộ lọc"
-            >
+            <Button type="button" variant="outline-secondary" size="sm" className="px-2" onClick={handleReset}>
               Reset
             </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              className="px-3"
-              style={{ minWidth: '90px' }}
-              onClick={() => navigate('/add')}
-            >
+            <Button type="button" variant="primary" size="sm" className="px-3" style={{ minWidth: '90px' }} onClick={() => navigate('/add')}>
               + Add New
             </Button>
           </Col>
         </Row>
       </Form>
 
-      {/* 5. BẢNG HIỂN THỊ DỮ LIỆU */}
+      {/* TABLE TỰ ĐỘNG VẼ CỘT THEO CONFIG */}
       <h5 className="fw-bold mb-2">{CONFIG.ENTITY_NAME} List</h5>
       <div className="border border-secondary mb-2 bg-white">
         <Table hover responsive className="mb-0 text-center align-middle">
@@ -303,73 +265,47 @@ export default function ListPage() {
               <th style={{ width: '60px' }}>#</th>
               <th className="text-start">{CONFIG.ENTITY_NAME} Name</th>
               <th>Category</th>
-              <th>{CONFIG.LABEL_EXTRA || 'Extra'}</th>
-              <th>{CONFIG.LABEL_PRICE || 'Price'}</th>
+              {CONFIG.FIELD_1 && <th>{CONFIG.LABEL_1}</th>}
+              {CONFIG.FIELD_2 && <th>{CONFIG.LABEL_2}</th>}
+              {CONFIG.FIELD_3 && <th>{CONFIG.LABEL_3}</th>}
+              {CONFIG.FIELD_4 && <th>{CONFIG.LABEL_4}</th>}
+              {CONFIG.FIELD_5 && <th>{CONFIG.LABEL_5}</th>}
               <th style={{ width: '180px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" className="py-4 text-muted">
+                <td colSpan={totalCols} className="py-4 text-muted">
                   Loading data from server...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-4 text-danger fw-bold">
+                <td colSpan={totalCols} className="py-4 text-danger fw-bold">
                   No records found
                 </td>
               </tr>
             ) : (
               items.map((item, index) => {
-                // Tự động nhận diện dữ liệu thông minh
-                const id =
-                  item[CONFIG.FIELD_ID] ||
-                  item.id ||
-                  item.shoesId ||
-                  item.employeeId ||
-                  index + 1;
-
-                const name =
-                  item[CONFIG.FIELD_NAME] ||
-                  item.name ||
-                  item.fullName ||
-                  item.shoesName ||
-                  item.title ||
-                  '—';
-
+                const id = item[CONFIG.FIELD_ID] || item.id || index + 1;
+                const name = item[CONFIG.FIELD_NAME] || item.name || item.fullName || item.shoesName || item.title || '—';
                 const cat =
                   typeof item[CONFIG.FIELD_CATEGORY] === 'object'
                     ? item[CONFIG.FIELD_CATEGORY]?.name || item[CONFIG.FIELD_CATEGORY]?.categoryName
-                    : item[CONFIG.FIELD_CATEGORY] ||
-                      item.departmentName ||
-                      item.categoryName ||
-                      item.category ||
-                      '—';
-
-                const extra =
-                  item[CONFIG.FIELD_EXTRA] ||
-                  item.manufacturer ||
-                  item.position ||
-                  item.author ||
-                  '—';
-
-                const price =
-                  item[CONFIG.FIELD_PRICE] ??
-                  item.price ??
-                  item.salary ??
-                  item.cost;
+                    : item[CONFIG.FIELD_CATEGORY] || item.departmentName || item.categoryName || '—';
 
                 return (
                   <tr key={id}>
                     <td>{(currentPage - 1) * pageSize + index + 1}</td>
                     <td className="text-start fw-medium">{name}</td>
                     <td>{cat}</td>
-                    <td>{extra}</td>
-                    <td>{price !== undefined ? Number(price).toLocaleString() : '—'}</td>
+                    {CONFIG.FIELD_1 && <td>{formatCellValue(item[CONFIG.FIELD_1])}</td>}
+                    {CONFIG.FIELD_2 && <td>{formatCellValue(item[CONFIG.FIELD_2])}</td>}
+                    {CONFIG.FIELD_3 && <td>{formatCellValue(item[CONFIG.FIELD_3])}</td>}
+                    {CONFIG.FIELD_4 && <td>{formatCellValue(item[CONFIG.FIELD_4])}</td>}
+                    {CONFIG.FIELD_5 && <td>{formatCellValue(item[CONFIG.FIELD_5])}</td>}
 
-                    {/* CỘT THAO TÁC: DELETE | VIEW | EDIT */}
                     <td>
                       <span
                         role="button"
@@ -380,17 +316,11 @@ export default function ListPage() {
                         Delete
                       </span>
                       <span className="text-muted"> | </span>
-                      <Link
-                        to={`/view/${id}`}
-                        className="text-decoration-underline text-primary fw-medium me-1"
-                      >
+                      <Link to={`/view/${id}`} className="text-decoration-underline text-primary fw-medium me-1">
                         View
                       </Link>
                       <span className="text-muted"> | </span>
-                      <Link
-                        to={`/edit/${id}`}
-                        className="text-decoration-underline text-success fw-medium ms-1"
-                      >
+                      <Link to={`/edit/${id}`} className="text-decoration-underline text-success fw-medium ms-1">
                         Edit
                       </Link>
                     </td>
@@ -402,21 +332,16 @@ export default function ListPage() {
         </Table>
       </div>
 
-      {/* 6. PHÂN TRANG VÀ ĐẾM DÒNG */}
+      {/* FOOTER PHÂN TRANG */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-1">
         <div className="text-muted small">
           Show <strong>{items.length}</strong> of <strong>{totalElements}</strong> records
         </div>
         <div>
-          <PaginationControl
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
+          <PaginationControl currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
       </div>
 
-      {/* 7. MODAL XÁC NHẬN XÓA */}
       <ConfirmationModal
         show={deleteModalShow}
         targetItem={itemToDelete}

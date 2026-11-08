@@ -1,42 +1,49 @@
 /**
  * ====================================================================================
- * ⚡ PE REACT - BẢNG CẤU HÌNH SIÊU TỐC (CHỈ SỬA DUY NHẤT FILE NÀY TRONG 30 GIÂY)
+ * ⚡ PE REACT - BẢNG CẤU HÌNH CỰC DỄ THEO FIELD_1, FIELD_2, FIELD_3...
  * ------------------------------------------------------------------------------------
- * 👉 NGUYÊN TẮC VÀNG TRONG PHÒNG THI:
- *    Gặp bất kỳ đề nào (Sách, Phòng, Giày, Xe, Nhân viên, Sinh viên...), bạn CHỈ CẦN
- *    sửa các dòng dưới đây. Toàn bộ giao diện, API, phân trang, lọc, thêm, sửa, xóa
- *    sẽ TỰ ĐỘNG CHẠY 100% mà KHÔNG CẦN CHỈNH SỬA CODE GIAO DIỆN!
+ * 👉 Đề bài yêu cầu trường gì, bạn CHỈ CẦN ĐIỀN TÊN VÀO FIELD_1, FIELD_2, FIELD_3...
+ *    Tất cả các trang List, Detail, Add, Edit sẽ TỰ ĐỘNG VẼ CỘT VÀ Ô NHẬP THEO!
  * ====================================================================================
  */
 
 export const CONFIG = {
-  // 1. TÊN ĐỐI TƯỢNG HIỂN THỊ (VD: 'Shoes', 'Employee', 'Book', 'Room', 'Car', 'Student'...)
-  ENTITY_NAME: 'Shoes',
+  // 🔹 THÔNG TIN CHUNG
+  ENTITY_NAME: 'Shoes',              // Đổi thành: 'Employee', 'Book', 'Room', 'Car'...
+  API_MAIN: '/shoes',                // Endpoint chính: '/employees', '/books', '/rooms'...
+  API_CATEGORY: '/categories',        // Endpoint danh mục: '/departments', '/room-types'...
 
-  // 2. ĐƯỜNG DẪN REST API TRÊN BACKEND (Mặc định chạy ở port 8080)
-  API_MAIN: '/shoes',               // Đổi thành: '/employees', '/books', '/rooms', '/products'...
-  API_CATEGORY: '/categories',       // Đổi thành: '/departments', '/categories', '/room-types'...
+  // 🔹 CÁC KHÓA BẮT BUỘC ĐỀ NÀO CŨNG CÓ:
+  FIELD_ID: 'shoesId',               // Tên trường ID: 'employeeId', 'id', 'bookId'...
+  FIELD_NAME: 'shoesName',           // Tên trường Tên: 'fullName', 'title', 'name'...
+  FIELD_CATEGORY: 'categoryName',    // Tên trường Danh mục: 'departmentName', 'category'...
+  PARAM_SEARCH_NAME: 'name',         // Param tìm tên khi lọc (thường là 'name')
+  PARAM_SEARCH_CAT: 'category',      // Param lọc danh mục: 'departmentId', 'categoryId', 'category'
 
-  // 3. TÊN THUỘC TÍNH JSON (Nhìn vào file Java Entity / DTO hoặc JSON Backend trả về):
-  FIELD_ID: 'shoesId',               // 'shoesId', 'employeeId', 'id', 'bookId', 'roomId'...
-  FIELD_NAME: 'shoesName',           // 'shoesName', 'fullName', 'name', 'title', 'roomNumber'...
-  FIELD_CATEGORY: 'categoryName',    // 'categoryName', 'departmentName', 'category', 'roomType'...
-  FIELD_PRICE: 'price',              // 'price', 'salary', 'cost', 'fee', 'rentPrice'...
-  FIELD_EXTRA: 'manufacturer',       // Cột phụ: 'manufacturer', 'position', 'author', 'brand'...
-  FIELD_DATE1: 'productionDate',      // Ngày 1: 'productionDate', 'startDate', 'createdDate'...
-  FIELD_DATE2: 'importDate',          // Ngày 2: 'importDate', 'dateOfBirth', 'endDate'...
+  // ==================================================================================
+  // 🎯 CÁC TRƯỜNG DỮ LIỆU ĐÁNH SỐ (ĐỀ CÓ TRƯỜNG NÀO THÌ ĐIỀN VÀO ĐÂY):
+  // ==================================================================================
+  
+  // 👉 FIELD 1: (Ví dụ: Giá tiền / Lương / Điểm số...)
+  FIELD_1: 'price',
+  LABEL_1: 'Price(đ)',
 
-  // 4. THAM SỐ GỬI LÊN KHI LỌC / TÌM KIẾM (GET ?name=...&category=...)
-  PARAM_SEARCH_NAME: 'name',         // Thường luôn là 'name'
-  PARAM_SEARCH_CAT: 'category',      // Nếu đề dùng ID phòng ban thì đổi thành 'departmentId' hoặc 'categoryId'
+  // 👉 FIELD 2: (Ví dụ: Nhà sản xuất / Chức vụ / Tác giả / Hãng xe...)
+  FIELD_2: 'manufacturer',
+  LABEL_2: 'Manufacturer',
 
-  // 5. NHÃN HIỂN THỊ CỘT TRÊN GIAO DIỆN (Tự động đổi theo ý bạn)
-  LABEL_PRICE: 'Price(đ)',           // Đổi thành: 'Salary' (Lương), 'Giá tiền', 'Học phí'...
-  LABEL_EXTRA: 'Manufacturer',       // Đổi thành: 'Position' (Vị trí), 'Tác giả', 'Hãng xe'...
-  LABEL_DATE1: 'Production date',    // Đổi thành: 'Start Date', 'Ngày sản xuất', 'Ngày tạo'...
-  LABEL_DATE2: 'Import Date',        // Đổi thành: 'Date of Birth' (Ngày sinh), 'Ngày nhập'...
+  // 👉 FIELD 3: (Ví dụ: Ngày sản xuất / Ngày bắt đầu / Ngày sinh / Email...)
+  FIELD_3: 'productionDate',
+  LABEL_3: 'Production date',
 
-  // 6. CẤU HÌNH KHÁC
-  PAGE_SIZE: 5,                      // Số bản ghi trên 1 trang (đề thi thường là 5)
-  PRICE_MAX: 999999999,              // Giới hạn giá tiền tối đa khi validate
+  // 👉 FIELD 4: (Ví dụ: Ngày nhập / Ngày kết thúc / Số điện thoại...)
+  FIELD_4: 'importDate',
+  LABEL_4: 'Import Date',
+
+  // 👉 FIELD 5: (Nếu đề có thêm trường số lượng, trạng thái... nếu không có thì để rỗng '')
+  FIELD_5: 'quantity',
+  LABEL_5: 'Quantity',
+
+  // 🔹 CẤU HÌNH PHÂN TRANG
+  PAGE_SIZE: 5,
 };
