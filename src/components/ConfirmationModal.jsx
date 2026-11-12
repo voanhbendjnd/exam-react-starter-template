@@ -1,28 +1,36 @@
 import React from 'react';
 import { Modal, Button } from 'react-bootstrap';
-import { CONFIG } from '../config';
 
 /**
- * Screen 2: Confirmation Screen Generic
- * Hộp thoại xác nhận xóa đối tượng dùng chung cho mọi đề thi:
- * "Are you sure you want to delete [entity] "[name]"?"
- * [ Yes ]  [ Close ]
+ * ====================================================================================
+ * 📄 CONFIRMATION MODAL (SCREEN 2)
+ * ------------------------------------------------------------------------------------
+ * 👉 DÙNG TEXT MẶC ĐỊNH RÕ RÀNG, DỄ TÙY BIẾN TRỰC TIẾP TRONG FILE NÀY:
+ * - Tiêu đề: "Confirmation"
+ * - Nội dung: Are you sure you want to delete "${itemName}"?
+ * - Nút: [ Yes ]  [ Close ]
+ * ====================================================================================
  */
-export default function ConfirmationModal({ show, targetItem, onConfirm, onClose, loading = false }) {
-  const itemName = targetItem
-    ? targetItem[CONFIG.FIELDS.NAME] || targetItem.name || 'this item'
-    : '';
-
+export default function ConfirmationModal({
+  show,
+  onClose,
+  onConfirm,
+  itemName = '',
+  title = 'Confirmation',
+  message,
+  loading = false,
+}) {
   return (
     <Modal show={show} onHide={onClose} centered backdrop="static">
       <Modal.Header closeButton>
         <Modal.Title className="fs-5 fw-bold text-center w-100">
-          {CONFIG.LABELS.PAGE_CONFIRM_TITLE}
+          {title}
         </Modal.Title>
       </Modal.Header>
 
       <Modal.Body className="text-center py-4 fs-6">
-        {CONFIG.MESSAGES.DELETE_CONFIRM(itemName)}
+        {/* 💡 Sửa text câu hỏi trực tiếp tại đây nếu đề yêu cầu chữ khác: */}
+        {message || `Are you sure you want to delete "${itemName || 'this item'}"?`}
       </Modal.Body>
 
       <Modal.Footer className="justify-content-center border-0 pb-4">
@@ -33,7 +41,7 @@ export default function ConfirmationModal({ show, targetItem, onConfirm, onClose
           disabled={loading}
           style={{ minWidth: '100px' }}
         >
-          {loading ? 'Processing...' : CONFIG.LABELS.BTN_YES}
+          {loading ? 'Processing...' : 'Yes'}
         </Button>
         <Button
           variant="secondary"
@@ -42,7 +50,7 @@ export default function ConfirmationModal({ show, targetItem, onConfirm, onClose
           disabled={loading}
           style={{ minWidth: '100px' }}
         >
-          {CONFIG.LABELS.BTN_CLOSE}
+          Close
         </Button>
       </Modal.Footer>
     </Modal>

@@ -1,9 +1,10 @@
 /**
  * ====================================================================================
- * ⚡ PE REACT - BẢNG CẤU HÌNH CỰC DỄ THEO FIELD_1, FIELD_2, FIELD_3...
+ * ⚡ PE REACT - BẢNG CẤU HÌNH DỰ ÁN
  * ------------------------------------------------------------------------------------
- * 👉 Đề bài yêu cầu trường gì, bạn CHỈ CẦN ĐIỀN TÊN VÀO FIELD_1, FIELD_2, FIELD_3...
- *    Tất cả các trang List, Detail, Add, Edit sẽ TỰ ĐỘNG VẼ CỘT VÀ Ô NHẬP THEO!
+ * 👉 Đề bài yêu cầu entity gì, bạn CHỈ CẦN ĐIỀN TÊN VÀ ENDPOINT VÀO ĐÂY:
+ *    - Toàn bộ tiêu đề cột và ô nhập form được viết TRỰC TIẾP bằng JSX tại các trang,
+ *      giúp bạn dễ nhìn, dễ sửa và tự do ghép biến (VD: priceFrom - priceTo).
  * ====================================================================================
  */
 
@@ -20,31 +21,7 @@ export const CONFIG = {
   PARAM_SEARCH_NAME: 'name',         // Param tìm tên khi lọc (thường là 'name')
   PARAM_SEARCH_CAT: 'category',      // Param lọc danh mục: 'departmentId', 'categoryId', 'category'
 
-  // ==================================================================================
-  // 🎯 CÁC TRƯỜNG DỮ LIỆU ĐÁNH SỐ (ĐỀ CÓ TRƯỜNG NÀO THÌ ĐIỀN VÀO ĐÂY):
-  // ==================================================================================
-  
-  // 👉 FIELD 1: (Ví dụ: Giá tiền / Lương / Điểm số...)
-  FIELD_1: 'price',
-  LABEL_1: 'Price(đ)',
-
-  // 👉 FIELD 2: (Ví dụ: Nhà sản xuất / Chức vụ / Tác giả / Hãng xe...)
-  FIELD_2: 'manufacturer',
-  LABEL_2: 'Manufacturer',
-
-  // 👉 FIELD 3: (Ví dụ: Ngày sản xuất / Ngày bắt đầu / Ngày sinh / Email...)
-  FIELD_3: 'productionDate',
-  LABEL_3: 'Production date',
-
-  // 👉 FIELD 4: (Ví dụ: Ngày nhập / Ngày kết thúc / Số điện thoại...)
-  FIELD_4: 'importDate',
-  LABEL_4: 'Import Date',
-
-  // 👉 FIELD 5: (Nếu đề có thêm trường số lượng, trạng thái... nếu không có thì để rỗng '')
-  FIELD_5: 'quantity',
-  LABEL_5: 'Quantity',
-
-  // 🔹 CẤU HÌNH PHÂN TRANG
+  // 🔹 CẤU HÌNH PHÂN TRANG MẶC ĐỊNH
   PAGE_SIZE: 5,
   PAGE_CONFIRM_TITLE:''
 };

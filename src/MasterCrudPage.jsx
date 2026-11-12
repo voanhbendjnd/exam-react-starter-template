@@ -39,13 +39,6 @@ export const CONFIG = {
   FIELD_PRICE: 'roomPricePerDay',  // Đổi thành: 'price', 'salary', 'gpa'...
   FIELD_STATUS: 'roomStatus',      // Đổi thành: 'status', 'active', 'isAvailable'...
   FIELD_DESC: 'roomDetailDescription', // Đổi thành: 'description', 'notes', 'address'...
-
-  // Tiêu đề hiển thị:
-  LABEL_TITLE: 'Hệ Thống Quản Lý Dữ Liệu (PE Template)',
-  LABEL_NAME: 'Tên / Số hiệu',
-  LABEL_CATEGORY: 'Danh mục / Phân loại',
-  LABEL_PRICE: 'Đơn giá / Lương',
-  LABEL_STATUS: 'Trạng thái',
 };
 
 export default function MasterCrudPage() {
@@ -274,7 +267,7 @@ export default function MasterCrudPage() {
       {/* 1. HEADER */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
         <div>
-          <h3 className="fw-bold text-primary mb-1">{CONFIG.LABEL_TITLE}</h3>
+          <h3 className="fw-bold text-primary mb-1">Hệ Thống Quản Lý Dữ Liệu</h3>
           <small className="text-muted">
             Tổng số: <strong>{filteredItems.length}</strong> kết quả (trên tổng số{' '}
             {items.length} bản ghi)
@@ -401,11 +394,11 @@ export default function MasterCrudPage() {
                 🔘
               </th>
               <th style={{ width: '60px' }}>ID</th>
-              <th>{CONFIG.LABEL_NAME}</th>
-              <th>{CONFIG.LABEL_CATEGORY}</th>
-              <th>{CONFIG.LABEL_PRICE}</th>
+              <th>Tên / Số hiệu</th>
+              <th>Danh mục / Phân loại</th>
+              <th>Đơn giá / Lương</th>
               <th>Mô tả</th>
-              <th style={{ width: '130px' }}>{CONFIG.LABEL_STATUS}</th>
+              <th style={{ width: '130px' }}>Trạng thái</th>
               <th style={{ width: '130px' }} className="text-center">
                 Thao tác
               </th>
@@ -523,7 +516,7 @@ export default function MasterCrudPage() {
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold">
-                {CONFIG.LABEL_NAME} <span className="text-danger">*</span>
+                Tên / Số hiệu <span className="text-danger">*</span>
               </Form.Label>
               <Form.Control
                 type="text"
@@ -537,7 +530,7 @@ export default function MasterCrudPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">{CONFIG.LABEL_CATEGORY}</Form.Label>
+              <Form.Label className="fw-bold">Danh mục / Phân loại</Form.Label>
               <Form.Select
                 value={formData.categoryId}
                 onChange={(e) =>
@@ -557,7 +550,7 @@ export default function MasterCrudPage() {
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold">
-                {CONFIG.LABEL_PRICE} (VNĐ) <span className="text-danger">*</span>
+                Đơn giá (VNĐ) <span className="text-danger">*</span>
               </Form.Label>
               <Form.Control
                 type="number"

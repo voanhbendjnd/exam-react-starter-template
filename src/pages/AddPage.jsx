@@ -8,65 +8,39 @@ import { V } from '../utils/validator';
 
 /**
  * ====================================================================================
- * 📄 MÀN HÌNH THÊM MỚI TỰ ĐỘNG THEO FIELD_1, FIELD_2, FIELD_3...
+ * 📄 MÀN HÌNH TẠO MỚI (ADD PAGE)
+ * ------------------------------------------------------------------------------------
+ * 💡 CÁC Ô NHẬP LIỆU ĐƯỢC VIẾT TƯỜNG MINH TỪNG THẺ FORM (KHÔNG DÙNG MAP/LOOP ĐỘNG):
+ * - Dễ dàng xem, thêm/bớt ô nhập liệu hoặc đổi type (number, text, date, select...)
+ * - Validate siêu nhanh bằng bộ V (V.required || V.positive || V.date || V.noDuplicate...)
  * ====================================================================================
  */
 export default function AddPage() {
   const navigate = useNavigate();
 
+  // Danh sách danh mục tải từ backend
   const [categories, setCategories] = useState([]);
   const [existingItems, setExistingItems] = useState([]);
 
-  // Tạo danh sách các trường linh hoạt được cấu hình
-  const dynamicFields = [
-    CONFIG.FIELD_1 && { key: CONFIG.FIELD_1, label: CONFIG.LABEL_1 },
-    CONFIG.FIELD_2 && { key: CONFIG.FIELD_2, label: CONFIG.LABEL_2 },
-    CONFIG.FIELD_3 && { key: CONFIG.FIELD_3, label: CONFIG.LABEL_3 },
-    CONFIG.FIELD_4 && { key: CONFIG.FIELD_4, label: CONFIG.LABEL_4 },
-    CONFIG.FIELD_5 && { key: CONFIG.FIELD_5, label: CONFIG.LABEL_5 },
-  ].filter(Boolean);
-
-  // State Form động
+  // Form State: Chứa tất cả các trường dữ liệu
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    manufacturer: '',
+    price: '',
+    // Ví dụ nếu bài thi có priceFrom / priceTo:
+    priceFrom: '',
+    priceTo: '',
+    productionDate: '',
+    importDate: '',
+    description: '',
   });
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [alertError, setAlertError] = useState('');
 
-  useEffect(() => {
-    const fetchInitData = async () => {
-      try {
-        const [catRes, listRes] = await Promise.all([
-          api.get(CONFIG.API_CATEGORY).catch(() => []),
-          api.get(CONFIG.API_MAIN).catch(() => []),
-        ]);
-
-        const catList = Array.isArray(catRes) ? catRes : (catRes?.content || catRes?.data || []);
-        setCategories(catList);
-        if (catList.length > 0) {
-          const firstCatVal =
-            catList[0]?.departmentId ||
-            catList[0]?.categoryId ||
-            catList[0]?.categoryName ||
-            catList[0]?.id ||
-            '';
-          setFormData((prev) => ({ ...prev, category: prev.category || firstCatVal }));
-        }
-
-        const itemList = Array.isArray(listRes) ? listRes : (listRes?.content || listRes?.data || []);
-        setExistingItems(itemList);
-      } catch (err) {
-        console.warn('Lỗi nạp dữ liệu ban đầu:', err.message);
-      }
-    };
-
-    fetchInitData();
-  }, []);
-
-  // Helper convert dd/MM/yyyy -> yyyy-MM-dd
+  // Chuyển đổi ngày dd/MM/yyyy sang yyyy-MM-dd để gửi cho Spring Boot
   const convertDateToBackend = (dateStr) => {
     if (!dateStr || typeof dateStr !== 'string') return null;
     const parts = dateStr.trim().split('/');
@@ -77,47 +51,79 @@ export default function AddPage() {
     return dateStr;
   };
 
-  const isDateField = (key) => /date|dob/i.test(key);
-  const isNumberField = (key) => /price|salary|cost|quantity|capacity/i.test(key);
+  useEffect(() => {
+    const fetchInitData = async () => {
+      try {
+        const [catRes, listRes] = await Promise.all([
+          api.get(CONFIG.API_CATEGORY).catch(() => []),
+          api.get(CONFIG.API_MAIN, { params: { size: 1000 } }).catch(() => []),
+        ]);
+
+        const catList = Array.isArray(catRes) ? catRes : (catRes?.content || catRes?.data || []);
+        setCategories(catList);
+
+        const allItems = Array.isArray(listRes)
+          ? listRes
+          : (listRes?.content || listRes?.data || []);
+        setExistingItems(allItems);
+      } catch (err) {
+        console.error('Lỗi nạp dữ liệu khởi tạo:', err);
+      }
+    };
+
+    fetchInitData();
+  }, []);
 
   // ----------------------------------------------------------------------------------
-  // 🛡️ HÀM VALIDATE DỮ LIỆU SIÊU TỐC DÙNG BỘ QUY TẮC V
-  // 👉 Muốn thêm luật cho trường nào, chỉ cần ghép bằng dấu ||:
-  //    VD: newErrors.email = V.required(val, 'Email') || V.email(val);
+  // 🛡️ HÀM VALIDATE FORM: GHÉP LUẬT 1 DÒNG BẰNG TOÁN TỬ || (SIÊU NHANH & DỄ HIỂU)
   // ----------------------------------------------------------------------------------
   const validateForm = () => {
     const newErrors = {};
 
-    // 1. Tên: Bắt buộc + Cấm trùng lặp (No duplicate)
+    // 1. Name: Bắt buộc + Không trùng lặp
     newErrors.name =
       V.required(formData.name, `${CONFIG.ENTITY_NAME} Name`) ||
       V.noDuplicate(formData.name, existingItems, CONFIG.FIELD_NAME, CONFIG.ENTITY_NAME);
 
-    // 2. Danh mục: Bắt buộc
+    // 2. Category: Bắt buộc
     newErrors.category = V.required(formData.category, 'Category');
 
-    // 3. Tự động áp dụng luật cho các trường FIELD_1, 2, 3...
-    dynamicFields.forEach((f) => {
-      const val = formData[f.key];
-      if (isDateField(f.key)) {
-        // Nếu là ngày chính (FIELD_3): Bắt buộc + Đúng format ngày
-        newErrors[f.key] =
-          (f.key === CONFIG.FIELD_3 ? V.required(val, f.label) : null) ||
-          V.date(val, f.label);
-      } else if (isNumberField(f.key)) {
-        // Bắt buộc + Số dương > 0
-        newErrors[f.key] = V.required(val, f.label) || V.positive(val, f.label);
-      } else {
-        // Text thường: Bắt buộc
-        newErrors[f.key] = V.required(val, f.label);
-      }
-    });
+    // 3. Manufacturer: Bắt buộc
+    if (formData.manufacturer !== undefined) {
+      newErrors.manufacturer = V.required(formData.manufacturer, 'Manufacturer');
+    }
 
-    // 💡 NẾU ĐỀ THI CÓ THÊM TRƯỜNG TÙY BIẾN, BẠN CHỈ CẦN THÊM ĐÚNG 1 DÒNG DƯỚI ĐÂY:
+    // 4. Price: Bắt buộc + Số dương > 0
+    if (formData.price !== undefined && formData.price !== '') {
+      newErrors.price = V.positive(formData.price, 'Price');
+    }
+
+    // 💡 Ví dụ nếu đề yêu cầu kiểm tra Range: priceTo > priceFrom
+    if (formData.priceFrom && formData.priceTo) {
+      newErrors.priceTo = V.compare(
+        formData.priceTo,
+        formData.priceFrom,
+        '>',
+        'Price To must be strictly greater than Price From.'
+      );
+    }
+
+    // 5. Production Date: Bắt buộc + Đúng định dạng dd/MM/yyyy
+    newErrors.productionDate =
+      V.required(formData.productionDate, 'Production Date') ||
+      V.date(formData.productionDate, 'Production Date');
+
+    // 6. Import Date: Kiểm tra định dạng ngày (nếu có nhập)
+    if (formData.importDate) {
+      newErrors.importDate = V.date(formData.importDate, 'Import Date');
+    }
+
+    // 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM EMAIL, PHONE, ĐỘ TUỔI (Bật lên chỉ bằng 1 dòng):
     // newErrors.email = V.required(formData.email, 'Email') || V.email(formData.email);
     // newErrors.phone = V.required(formData.phone, 'Phone') || V.phone(formData.phone);
+    // newErrors.dob   = V.required(formData.dob, 'Birth Date') || V.date(formData.dob) || V.minAge(formData.dob, 18);
 
-    // Dọn dẹp các trường hợp lệ (null/undefined)
+    // Dọn các giá trị hợp lệ (null/undefined)
     Object.keys(newErrors).forEach((key) => {
       if (!newErrors[key]) delete newErrors[key];
     });
@@ -145,55 +151,54 @@ export default function AddPage() {
 
     setSubmitting(true);
     try {
+      // Chuẩn bị payload gửi lên server
       const isNumCategory = !isNaN(Number(formData.category));
       const payload = {
         [CONFIG.FIELD_NAME]: (formData.name || '').trim(),
+        manufacturer: (formData.manufacturer || '').trim(),
+        price: formData.price !== '' ? Number(formData.price) : undefined,
+        productionDate: convertDateToBackend(formData.productionDate),
+        importDate: convertDateToBackend(formData.importDate),
+        description: (formData.description || '').trim(),
       };
 
-      dynamicFields.forEach((f) => {
-        const val = formData[f.key];
-        if (isDateField(f.key)) {
-          payload[f.key] = convertDateToBackend(val);
-        } else if (isNumberField(f.key)) {
-          payload[f.key] = Number(val);
-        } else {
-          payload[f.key] = (val || '').trim();
-        }
-      });
+      // Đưa thêm priceFrom/priceTo nếu có
+      if (formData.priceFrom) payload.priceFrom = Number(formData.priceFrom);
+      if (formData.priceTo) payload.priceTo = Number(formData.priceTo);
 
+      // Gắn category theo ID hoặc Object tùy theo Backend
       if (isNumCategory) {
-        payload[CONFIG.PARAM_SEARCH_CAT || 'categoryId'] = Number(formData.category);
-        payload.categoryId = Number(formData.category);
-        payload.departmentId = Number(formData.category);
+        payload.category = { categoryId: Number(formData.category) };
+        payload.department = { departmentId: Number(formData.category) };
+        payload[CONFIG.FIELD_CATEGORY] = Number(formData.category);
       } else {
         payload[CONFIG.FIELD_CATEGORY] = formData.category;
       }
 
       await api.post(CONFIG.API_MAIN, payload);
 
-      sessionStorage.setItem('flashMessage', `Created new ${CONFIG.ENTITY_NAME.toLowerCase()} successfully`);
+      sessionStorage.setItem('flashMessage', 'Created successfully!');
       navigate('/');
     } catch (err) {
-      setAlertError(`Failed to create record: ${err.message}`);
+      setAlertError(`Failed to save: ${err.message || 'Server error'}`);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Container className="py-3" style={{ maxWidth: '800px' }}>
+    <Container className="py-3" style={{ maxWidth: '850px' }}>
       <Header />
-      <h4 className="fw-bold mb-3">Add New {CONFIG.ENTITY_NAME}</h4>
 
-      {alertError && (
-        <Alert variant="danger" dismissible onClose={() => setAlertError('')}>
-          {alertError}
-        </Alert>
-      )}
+      <Card className="p-4 border border-dark shadow-sm">
+        <h5 className="fw-bold mb-4 text-uppercase">ADD NEW {CONFIG.ENTITY_NAME}</h5>
 
-      <Card className="border border-secondary p-4 bg-white shadow-sm">
+        {alertError && <Alert variant="danger">{alertError}</Alert>}
+
         <Form onSubmit={handleSubmit} noValidate>
-          {/* Ô TÊN */}
+          {/* ================================================================= */}
+          {/* 1. NAME FIELD                                                     */}
+          {/* ================================================================= */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               {CONFIG.ENTITY_NAME} Name: <span className="text-danger">*</span>
@@ -201,7 +206,7 @@ export default function AddPage() {
             <Col sm={8}>
               <Form.Control
                 type="text"
-                placeholder={`Enter name`}
+                placeholder={`Enter ${CONFIG.ENTITY_NAME.toLowerCase()} name`}
                 value={formData.name || ''}
                 isInvalid={!!errors.name}
                 onChange={(e) => handleChange('name', e.target.value)}
@@ -210,32 +215,116 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* CÁC TRƯỜNG LINH HOẠT FIELD_1, 2, 3, 4, 5 TỰ ĐỘNG RENDER */}
-          {dynamicFields.map((f) => {
-            const isDate = isDateField(f.key);
-            const isNum = isNumberField(f.key);
+          {/* ================================================================= */}
+          {/* 2. MANUFACTURER / POSITION FIELD                                  */}
+          {/* ================================================================= */}
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Manufacturer: <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={8}>
+              <Form.Control
+                type="text"
+                placeholder="Enter manufacturer"
+                value={formData.manufacturer || ''}
+                isInvalid={!!errors.manufacturer}
+                onChange={(e) => handleChange('manufacturer', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.manufacturer}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
 
-            return (
-              <Form.Group as={Row} className="mb-3" key={f.key}>
-                <Form.Label column sm={3} className="text-sm-end fw-medium">
-                  {f.label}: <span className="text-danger">*</span>
-                </Form.Label>
-                <Col sm={isDate || isNum ? 4 : 8}>
-                  <Form.Control
-                    type={isNum ? 'number' : 'text'}
-                    placeholder={isDate ? 'dd/MM/yyyy' : `Enter ${f.label.toLowerCase()}`}
-                    maxLength={isDate ? 10 : undefined}
-                    value={formData[f.key] || ''}
-                    isInvalid={!!errors[f.key]}
-                    onChange={(e) => handleChange(f.key, e.target.value)}
-                  />
-                  <Form.Control.Feedback type="invalid">{errors[f.key]}</Form.Control.Feedback>
-                </Col>
-              </Form.Group>
-            );
-          })}
+          {/* ================================================================= */}
+          {/* 3. PRICE FIELD                                                    */}
+          {/* ================================================================= */}
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Price (đ): <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={5}>
+              <Form.Control
+                type="number"
+                placeholder="Enter price"
+                value={formData.price || ''}
+                isInvalid={!!errors.price}
+                onChange={(e) => handleChange('price', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.price}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
 
-          {/* DROPDOWN CATEGORY */}
+          {/* ================================================================= */}
+          {/* 💡 4. VÍ DỤ NẾU ĐỀ YÊU CẦU NHẬP PRICE RANGE (Price From - Price To)*/}
+          {/* ================================================================= */}
+          {/*
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Price Range:
+            </Form.Label>
+            <Col sm={4}>
+              <Form.Control
+                type="number"
+                placeholder="Price From"
+                value={formData.priceFrom || ''}
+                onChange={(e) => handleChange('priceFrom', e.target.value)}
+              />
+            </Col>
+            <Col sm={4}>
+              <Form.Control
+                type="number"
+                placeholder="Price To"
+                value={formData.priceTo || ''}
+                isInvalid={!!errors.priceTo}
+                onChange={(e) => handleChange('priceTo', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.priceTo}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+          */}
+
+          {/* ================================================================= */}
+          {/* 5. PRODUCTION DATE (dd/MM/yyyy)                                   */}
+          {/* ================================================================= */}
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Production Date: <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={4}>
+              <Form.Control
+                type="text"
+                placeholder="dd/MM/yyyy"
+                maxLength={10}
+                value={formData.productionDate || ''}
+                isInvalid={!!errors.productionDate}
+                onChange={(e) => handleChange('productionDate', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.productionDate}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+
+          {/* ================================================================= */}
+          {/* 6. IMPORT DATE (dd/MM/yyyy)                                       */}
+          {/* ================================================================= */}
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Import Date:
+            </Form.Label>
+            <Col sm={4}>
+              <Form.Control
+                type="text"
+                placeholder="dd/MM/yyyy"
+                maxLength={10}
+                value={formData.importDate || ''}
+                isInvalid={!!errors.importDate}
+                onChange={(e) => handleChange('importDate', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.importDate}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+
+          {/* ================================================================= */}
+          {/* 7. DROPDOWN CATEGORY                                              */}
+          {/* ================================================================= */}
           <Form.Group as={Row} className="mb-4">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
               Category: <span className="text-danger">*</span>
@@ -248,11 +337,19 @@ export default function AddPage() {
               >
                 <option value="">-- Select Category --</option>
                 {categories.map((c) => {
-                  const catVal = c.departmentId || c.categoryId || c.categoryName || c.departmentName || c.id || c.name || c;
-                  const catLabel = c.departmentName || c.categoryName || c.name || c.title || c;
+                  const catVal =
+                    c.departmentId ||
+                    c.categoryId ||
+                    c.categoryName ||
+                    c.departmentName ||
+                    c.id ||
+                    c.name ||
+                    c;
+                  const catText =
+                    c.departmentName || c.categoryName || c.name || c.title || c;
                   return (
                     <option key={catVal} value={catVal}>
-                      {catLabel}
+                      {catText}
                     </option>
                   );
                 })}
@@ -261,13 +358,27 @@ export default function AddPage() {
             </Col>
           </Form.Group>
 
-          {/* BUTTONS */}
+          {/* ================================================================= */}
+          {/* NÚT SUBMIT & BACK                                                 */}
+          {/* ================================================================= */}
           <Row>
             <Col sm={{ span: 8, offset: 3 }} className="d-flex gap-3">
-              <Button type="submit" variant="outline-primary" className="px-4" style={{ minWidth: '100px' }} disabled={submitting}>
+              <Button
+                type="submit"
+                variant="outline-primary"
+                className="px-4"
+                style={{ minWidth: '100px' }}
+                disabled={submitting}
+              >
                 {submitting ? 'Saving...' : 'Save'}
               </Button>
-              <Button type="button" variant="outline-secondary" className="px-4" style={{ minWidth: '100px' }} onClick={() => navigate('/')}>
+              <Button
+                type="button"
+                variant="outline-secondary"
+                className="px-4"
+                style={{ minWidth: '100px' }}
+                onClick={() => navigate('/')}
+              >
                 Back
               </Button>
             </Col>
