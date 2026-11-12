@@ -46,4 +46,5 @@ export const CONFIG = {
 
   // 🔹 CẤU HÌNH PHÂN TRANG
   PAGE_SIZE: 5,
+  PAGE_CONFIRM_TITLE:''
 };
