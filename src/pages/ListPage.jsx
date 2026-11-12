@@ -316,8 +316,9 @@ export default function ListPage() {
               <th style={{ width: '60px' }}>#</th>
               <th className="text-start">{CONFIG.ENTITY_NAME} Name</th>
               <th>Category</th>
-              <th>Manufacturer</th>
-              <th>Price(đ)</th>
+              <th>Owner</th>
+              <th>Address</th>
+              <th>Price range(d)</th>
 
               {/* 💡 VÍ DỤ NẾU ĐỀ YÊU CẦU THÊM CỘT "Price Range" hoặc bất kỳ cột nào: */}
               {/* <th>Price Range(đ)</th> */}
@@ -365,12 +366,10 @@ export default function ListPage() {
                       item.category ||
                       '—';
 
-                const manufacturer =
-                  item.manufacturer ||
-                  item.position ||
-                  item.author ||
-                  '—';
-
+                const owner = item['ownerName']
+                const address = item['address']
+                const priceFrom = item['priceFrom']
+                const priceTo = item['priceTo']
                 const price =
                   item.price !== undefined
                     ? Number(item.price).toLocaleString()
@@ -383,8 +382,9 @@ export default function ListPage() {
                     <td>{(currentPage - 1) * pageSize + index + 1}</td>
                     <td className="text-start fw-medium">{name}</td>
                     <td>{cat}</td>
-                    <td>{manufacturer}</td>
-                    <td>{price}</td>
+                    <td>{owner}</td>
+                    <td>{address}</td>
+                    <td>{priceFrom} - {priceTo}</td>
 
                     {/* 💡 VÍ DỤ GHÉP 2 BIẾN TỪ SERVER (priceFrom - priceTo):
                         Bạn có thể viết trực tiếp rất dễ dàng như sau:

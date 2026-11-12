@@ -106,7 +106,7 @@ export const V = {
   },
 
   // 7. KHOẢNG GIÁ TRỊ (min <= val <= max hoặc exclusive)
-  range: (val, min = 0, max = 10000, fieldName = 'Value', exclusive = false) => {
+  range: (val, min = 1000, max = 1000000, fieldName = 'Value', exclusive = false) => {
     if (val === undefined || val === null || String(val).trim() === '') return null;
     const num = Number(val);
     if (isNaN(num)) return `${fieldName} must be a number.`;

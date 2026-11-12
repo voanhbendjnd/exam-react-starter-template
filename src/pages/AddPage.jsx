@@ -28,12 +28,16 @@ export default function AddPage() {
     category: '',
     manufacturer: '',
     price: '',
+    priceFrom:'',
+    priceTo:'',
     // Ví dụ nếu bài thi có priceFrom / priceTo:
-    priceFrom: '',
-    priceTo: '',
+    address:'',
+    ownerName:'',
+    openDate:'',
     productionDate: '',
     importDate: '',
     description: '',
+    categoryId:'',
   });
 
   const [errors, setErrors] = useState({});
@@ -88,18 +92,26 @@ export default function AddPage() {
     // 2. Category: Bắt buộc
     newErrors.category = V.required(formData.category, 'Category');
 
-    // 3. Manufacturer: Bắt buộc
-    if (formData.manufacturer !== undefined) {
-      newErrors.manufacturer = V.required(formData.manufacturer, 'Manufacturer');
-    }
+    // 3. Owner Name: Bắt buộc
+    newErrors.ownerName = V.required(formData.ownerName, 'Owner name');
 
-    // 4. Price: Bắt buộc + Số dương > 0
-    if (formData.price !== undefined && formData.price !== '') {
-      newErrors.price = V.positive(formData.price, 'Price');
-    }
+    // 4. Address: Bắt buộc
+    newErrors.address = V.required(formData.address, 'Address');
 
-    // 💡 Ví dụ nếu đề yêu cầu kiểm tra Range: priceTo > priceFrom
-    if (formData.priceFrom && formData.priceTo) {
+    // 5. Price from: Bắt buộc + Số dương > 0 + Khoảng (nếu có)
+    newErrors.priceFrom =
+      V.required(formData.priceFrom, 'Price from') ||
+      V.positive(formData.priceFrom, 'Price from') ||
+      V.range(formData.priceFrom, 1000, 1000000, 'Price from');
+
+    // 6. Price to: Bắt buộc + Số dương > 0 + Khoảng (nếu có)
+    newErrors.priceTo =
+      V.required(formData.priceTo, 'Price to') ||
+      V.positive(formData.priceTo, 'Price to') ||
+      V.range(formData.priceTo, 1000, 1000000, 'Price to');
+
+    // 💡 So sánh: Price To phải lớn hơn Price From
+    if (!newErrors.priceFrom && !newErrors.priceTo && formData.priceFrom && formData.priceTo) {
       newErrors.priceTo = V.compare(
         formData.priceTo,
         formData.priceFrom,
@@ -108,20 +120,10 @@ export default function AddPage() {
       );
     }
 
-    // 5. Production Date: Bắt buộc + Đúng định dạng dd/MM/yyyy
-    newErrors.productionDate =
-      V.required(formData.productionDate, 'Production Date') ||
-      V.date(formData.productionDate, 'Production Date');
-
-    // 6. Import Date: Kiểm tra định dạng ngày (nếu có nhập)
-    if (formData.importDate) {
-      newErrors.importDate = V.date(formData.importDate, 'Import Date');
-    }
-
-    // 💡 VÍ DỤ NẾU ĐỀ CÓ THÊM EMAIL, PHONE, ĐỘ TUỔI (Bật lên chỉ bằng 1 dòng):
-    // newErrors.email = V.required(formData.email, 'Email') || V.email(formData.email);
-    // newErrors.phone = V.required(formData.phone, 'Phone') || V.phone(formData.phone);
-    // newErrors.dob   = V.required(formData.dob, 'Birth Date') || V.date(formData.dob) || V.minAge(formData.dob, 18);
+    // 7. Open Date: Bắt buộc + Đúng định dạng dd/MM/yyyy
+    newErrors.openDate =
+      V.required(formData.openDate, 'Open Date') ||
+      V.date(formData.openDate, 'Open Date');
 
     // Dọn các giá trị hợp lệ (null/undefined)
     Object.keys(newErrors).forEach((key) => {
@@ -154,26 +156,23 @@ export default function AddPage() {
       // Chuẩn bị payload gửi lên server
       const isNumCategory = !isNaN(Number(formData.category));
       const payload = {
-        [CONFIG.FIELD_NAME]: (formData.name || '').trim(),
-        manufacturer: (formData.manufacturer || '').trim(),
-        price: formData.price !== '' ? Number(formData.price) : undefined,
-        productionDate: convertDateToBackend(formData.productionDate),
-        importDate: convertDateToBackend(formData.importDate),
-        description: (formData.description || '').trim(),
+        restaurantName: (formData.name || '').trim(),
+        ownerName:(formData.ownerName).trim(),
+        priceFrom: formData.priceFrom !== '' ? Number(formData.priceFrom) : undefined,
+        priceTo: formData.priceTo !== '' ? Number(formData.priceTo) : undefined,
+        openDate: convertDateToBackend(formData.openDate),
+        address: formData.address,
+        categoryId: (Number(formData.category))
       };
 
-      // Đưa thêm priceFrom/priceTo nếu có
-      if (formData.priceFrom) payload.priceFrom = Number(formData.priceFrom);
-      if (formData.priceTo) payload.priceTo = Number(formData.priceTo);
 
-      // Gắn category theo ID hoặc Object tùy theo Backend
-      if (isNumCategory) {
-        payload.category = { categoryId: Number(formData.category) };
-        payload.department = { departmentId: Number(formData.category) };
-        payload[CONFIG.FIELD_CATEGORY] = Number(formData.category);
-      } else {
-        payload[CONFIG.FIELD_CATEGORY] = formData.category;
-      }
+      // if (isNumCategory) {
+      //   payload.category = { categoryId: Number(formData.category) };
+      //   payload.department = { departmentId: Number(formData.category) };
+      //   payload[CONFIG.FIELD_CATEGORY] = Number(formData.category);
+      // } else {
+      //   payload[CONFIG.FIELD_CATEGORY] = formData.category;
+      // }
 
       await api.post(CONFIG.API_MAIN, payload);
 
@@ -220,36 +219,67 @@ export default function AddPage() {
           {/* ================================================================= */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              Manufacturer: <span className="text-danger">*</span>
+              Owner name: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={8}>
               <Form.Control
                 type="text"
-                placeholder="Enter manufacturer"
-                value={formData.manufacturer || ''}
-                isInvalid={!!errors.manufacturer}
-                onChange={(e) => handleChange('manufacturer', e.target.value)}
+                placeholder="Enter owner name"
+                value={formData.ownerName || ''}
+                isInvalid={!!errors.ownerName}
+                onChange={(e) => handleChange('ownerName', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.manufacturer}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.ownerName}</Form.Control.Feedback>
             </Col>
           </Form.Group>
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Address: <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={8}>
+              <Form.Control
+                  type="text"
+                  placeholder="Enter address"
+                  value={formData.address || ''}
+                  isInvalid={!!errors.address}
+                  onChange={(e) => handleChange('address', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.address}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+
 
           {/* ================================================================= */}
           {/* 3. PRICE FIELD                                                    */}
           {/* ================================================================= */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              Price (đ): <span className="text-danger">*</span>
+              Price from: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={5}>
               <Form.Control
                 type="number"
                 placeholder="Enter price"
-                value={formData.price || ''}
-                isInvalid={!!errors.price}
-                onChange={(e) => handleChange('price', e.target.value)}
+                value={formData.priceFrom || ''}
+                isInvalid={!!errors.priceFrom}
+                onChange={(e) => handleChange('priceFrom', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.price}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.priceFrom}</Form.Control.Feedback>
+            </Col>
+          </Form.Group>
+          <Form.Group as={Row} className="mb-3">
+            <Form.Label column sm={3} className="text-sm-end fw-medium">
+              Price to: <span className="text-danger">*</span>
+            </Form.Label>
+            <Col sm={5}>
+              <Form.Control
+                  type="number"
+                  placeholder="Enter price"
+                  value={formData.priceTo || ''}
+                  isInvalid={!!errors.priceTo}
+                  onChange={(e) => handleChange('priceTo', e.target.value)}
+              />
+              <Form.Control.Feedback type="invalid">{errors.priceTo}</Form.Control.Feedback>
             </Col>
           </Form.Group>
 
@@ -287,40 +317,22 @@ export default function AddPage() {
           {/* ================================================================= */}
           <Form.Group as={Row} className="mb-3">
             <Form.Label column sm={3} className="text-sm-end fw-medium">
-              Production Date: <span className="text-danger">*</span>
+              Open Date: <span className="text-danger">*</span>
             </Form.Label>
             <Col sm={4}>
               <Form.Control
                 type="text"
                 placeholder="dd/MM/yyyy"
                 maxLength={10}
-                value={formData.productionDate || ''}
-                isInvalid={!!errors.productionDate}
-                onChange={(e) => handleChange('productionDate', e.target.value)}
+                value={formData.openDate || ''}
+                isInvalid={!!errors.openDate}
+                onChange={(e) => handleChange('openDate', e.target.value)}
               />
-              <Form.Control.Feedback type="invalid">{errors.productionDate}</Form.Control.Feedback>
+              <Form.Control.Feedback type="invalid">{errors.openDate}</Form.Control.Feedback>
             </Col>
           </Form.Group>
 
-          {/* ================================================================= */}
-          {/* 6. IMPORT DATE (dd/MM/yyyy)                                       */}
-          {/* ================================================================= */}
-          <Form.Group as={Row} className="mb-3">
-            <Form.Label column sm={3} className="text-sm-end fw-medium">
-              Import Date:
-            </Form.Label>
-            <Col sm={4}>
-              <Form.Control
-                type="text"
-                placeholder="dd/MM/yyyy"
-                maxLength={10}
-                value={formData.importDate || ''}
-                isInvalid={!!errors.importDate}
-                onChange={(e) => handleChange('importDate', e.target.value)}
-              />
-              <Form.Control.Feedback type="invalid">{errors.importDate}</Form.Control.Feedback>
-            </Col>
-          </Form.Group>
+
 
           {/* ================================================================= */}
           {/* 7. DROPDOWN CATEGORY                                              */}
@@ -338,15 +350,9 @@ export default function AddPage() {
                 <option value="">-- Select Category --</option>
                 {categories.map((c) => {
                   const catVal =
-                    c.departmentId ||
-                    c.categoryId ||
-                    c.categoryName ||
-                    c.departmentName ||
-                    c.id ||
-                    c.name ||
-                    c;
+                    c.categoryId
                   const catText =
-                    c.departmentName || c.categoryName || c.name || c.title || c;
+                    c.categoryName;
                   return (
                     <option key={catVal} value={catVal}>
                       {catText}

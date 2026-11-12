@@ -80,7 +80,8 @@ export default function DetailPage() {
         item?.categoryName ||
         item?.category ||
         '—';
-
+  const openDate = item?.['openDate']
+  const ownerName = item?.['ownerName'];
   return (
     <Container className="py-3" style={{ maxWidth: '800px' }}>
       <Header />
@@ -115,7 +116,14 @@ export default function DetailPage() {
                   {itemName}
                 </Col>
               </Row>
-
+              <Row className="mb-2">
+                <Col xs={5} className="text-end fw-medium text-secondary">
+                  Owner name:
+                </Col>
+                <Col xs={7} className="text-dark">
+                  {ownerName}
+                </Col>
+              </Row>
               {/* 2. CATEGORY / PHÒNG BAN */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
@@ -126,25 +134,8 @@ export default function DetailPage() {
                 </Col>
               </Row>
 
-              {/* 3. FIELD 1: HÃNG SX / POSITION / TÁC GIẢ */}
-              <Row className="mb-2">
-                <Col xs={5} className="text-end fw-medium text-secondary">
-                  Manufacturer:
-                </Col>
-                <Col xs={7} className="text-dark">
-                  {item?.manufacturer || item?.position || item?.author || '—'}
-                </Col>
-              </Row>
 
-              {/* 4. FIELD 2: GIÁ TIỀN / LƯƠNG */}
-              <Row className="mb-2">
-                <Col xs={5} className="text-end fw-medium text-secondary">
-                  Price (đ):
-                </Col>
-                <Col xs={7} className="text-dark">
-                  {formatNumber(item?.price ?? item?.salary)}
-                </Col>
-              </Row>
+
 
               {/* 💡 5. VÍ DỤ GHÉP 2 BIẾN TỪ SERVER (priceFrom - priceTo) */}
               {/* Server gửi riêng priceFrom và priceTo nhưng bạn muốn hiển thị gộp: */}
@@ -162,22 +153,14 @@ export default function DetailPage() {
               {/* 6. FIELD 3: NGÀY SẢN XUẤT / NGÀY SINH / START DATE */}
               <Row className="mb-2">
                 <Col xs={5} className="text-end fw-medium text-secondary">
-                  Production Date:
+                 Open date:
                 </Col>
                 <Col xs={7} className="text-dark">
-                  {formatDate(item?.productionDate || item?.dob || item?.startDate)}
+                  {formatDate(openDate)}
                 </Col>
               </Row>
 
-              {/* 7. FIELD 4: NGÀY NHẬP / NGÀY HẾT HẠN */}
-              <Row className="mb-2">
-                <Col xs={5} className="text-end fw-medium text-secondary">
-                  Import Date:
-                </Col>
-                <Col xs={7} className="text-dark">
-                  {formatDate(item?.importDate || item?.endDate)}
-                </Col>
-              </Row>
+
 
               {/* 8. FIELD 5: MÔ TẢ / GHI CHÚ */}
               {item?.description && (
