@@ -23,5 +23,4 @@ export const CONFIG = {
 
   // 🔹 CẤU HÌNH PHÂN TRANG MẶC ĐỊNH
   PAGE_SIZE: 5,
-  PAGE_CONFIRM_TITLE:''
 };
