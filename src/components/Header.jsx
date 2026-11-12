@@ -19,7 +19,10 @@ export default function Header() {
       style={{ borderBottom: '2px solid #333' }}
     >
       <div className="fw-bold fs-5 text-dark" style={{ minWidth: '100px' }}>
-        {CONFIG.LOGO_TEXT}
+        Logo
+      </div>
+      <div className="fw-bold fs-5 text-dark" style={{ minWidth: '100px' }}>
+        Restaurant
       </div>
       <div className="text-secondary small fw-medium">
         Date: {formattedDate}
